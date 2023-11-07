@@ -1,0 +1,3094 @@
+# Next.js Config
+
+
+## appDir
+
+
+---
+title: appDir
+description: Enable the App Router to use layouts, streaming, and more.
+---
+
+> **Good to know**: This option is **no longer** needed as of Next.js 13.4. The App Router is now stable.
+
+The App Router ([`app` directory](/docs/app/building-your-application/routing)) enables support for [layouts](/docs/app/building-your-application/routing/pages-and-layouts), [Server Components](/docs/app/building-your-application/rendering/server-components), [streaming](/docs/app/building-your-application/routing/loading-ui-and-streaming), and [colocated data fetching](/docs/app/building-your-application/data-fetching).
+
+Using the `app` directory will automatically enable [React Strict Mode](https://react.dev/reference/react/StrictMode). Learn how to [incrementally adopt `app`](/docs/app/building-your-application/upgrading/app-router-migration#migrating-from-pages-to-app).
+
+
+## assetPrefix
+
+
+---
+title: assetPrefix
+description: Learn how to use the assetPrefix config option to configure your CDN.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<AppOnly>
+
+> **Attention**: [Deploying to Vercel](/docs/app/building-your-application/deploying) automatically configures a global CDN for your Next.js project.
+> You do not need to manually setup an Asset Prefix.
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Attention**: [Deploying to Vercel](/docs/pages/building-your-application/deploying) automatically configures a global CDN for your Next.js project.
+> You do not need to manually setup an Asset Prefix.
+
+</PagesOnly>
+
+> **Good to know**: Next.js 9.5+ added support for a customizable [Base Path](/docs/app/api-reference/next-config-js/basePath), which is better
+> suited for hosting your application on a sub-path like `/docs`.
+> We do not suggest you use a custom Asset Prefix for this use case.
+
+To set up a [CDN](https://en.wikipedia.org/wiki/Content_delivery_network), you can set up an asset prefix and configure your CDN's origin to resolve to the domain that Next.js is hosted on.
+
+Open `next.config.js` and add the `assetPrefix` config:
+
+```js filename="next.config.js"
+const isProd = process.env.NODE_ENV === 'production'
+
+module.exports = {
+  // Use the CDN in production and localhost for development.
+  assetPrefix: isProd ? 'https://cdn.mydomain.com' : undefined,
+}
+```
+
+Next.js will automatically use your asset prefix for the JavaScript and CSS files it loads from the `/_next/` path (`.next/static/` folder). For example, with the above configuration, the following request for a JS chunk:
+
+```
+/_next/static/chunks/4b9b41aaa062cbbfeff4add70f256968c51ece5d.4d708494b3aed70c04f0.js
+```
+
+Would instead become:
+
+```
+https://cdn.mydomain.com/_next/static/chunks/4b9b41aaa062cbbfeff4add70f256968c51ece5d.4d708494b3aed70c04f0.js
+```
+
+The exact configuration for uploading your files to a given CDN will depend on your CDN of choice. The only folder you need to host on your CDN is the contents of `.next/static/`, which should be uploaded as `_next/static/` as the above URL request indicates. **Do not upload the rest of your `.next/` folder**, as you should not expose your server code and other configuration to the public.
+
+While `assetPrefix` covers requests to `_next/static`, it does not influence the following paths:
+
+<AppOnly>
+
+- Files in the [public](/docs/app/building-your-application/optimizing/static-assets) folder; if you want to serve those assets over a CDN, you'll have to introduce the prefix yourself
+
+</AppOnly>
+
+<PagesOnly>
+
+- Files in the [public](/docs/pages/building-your-application/optimizing/static-assets) folder; if you want to serve those assets over a CDN, you'll have to introduce the prefix yourself
+- `/_next/data/` requests for `getServerSideProps` pages. These requests will always be made against the main domain since they're not static.
+- `/_next/data/` requests for `getStaticProps` pages. These requests will always be made against the main domain to support [Incremental Static Generation](/docs/pages/building-your-application/data-fetching/incremental-static-regeneration), even if you're not using it (for consistency).
+
+</PagesOnly>
+
+
+## basePath
+
+
+---
+title: basePath
+description: Use `basePath` to deploy a Next.js application under a sub-path of a domain.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+To deploy a Next.js application under a sub-path of a domain you can use the `basePath` config option.
+
+`basePath` allows you to set a path prefix for the application. For example, to use `/docs` instead of `''` (an empty string, the default), open `next.config.js` and add the `basePath` config:
+
+```js filename="next.config.js"
+module.exports = {
+  basePath: '/docs',
+}
+```
+
+> **Good to know**: This value must be set at build time and cannot be changed without re-building as the value is inlined in the client-side bundles.
+
+### Links
+
+When linking to other pages using `next/link` and `next/router` the `basePath` will be automatically applied.
+
+For example, using `/about` will automatically become `/docs/about` when `basePath` is set to `/docs`.
+
+```js
+export default function HomePage() {
+  return (
+    <>
+      <Link href="/about">About Page</Link>
+    </>
+  )
+}
+```
+
+Output html:
+
+```html
+<a href="/docs/about">About Page</a>
+```
+
+This makes sure that you don't have to change all links in your application when changing the `basePath` value.
+
+### Images
+
+<AppOnly>
+
+When using the [`next/image`](/docs/app/api-reference/components/image) component, you will need to add the `basePath` in front of `src`.
+
+</AppOnly>
+
+<PagesOnly>
+
+When using the [`next/image`](/docs/pages/api-reference/components/image) component, you will need to add the `basePath` in front of `src`.
+
+</PagesOnly>
+
+For example, using `/docs/me.png` will properly serve your image when `basePath` is set to `/docs`.
+
+```jsx
+import Image from 'next/image'
+
+function Home() {
+  return (
+    <>
+      <h1>My Homepage</h1>
+      <Image
+        src="/docs/me.png"
+        alt="Picture of the author"
+        width={500}
+        height={500}
+      />
+      <p>Welcome to my homepage!</p>
+    </>
+  )
+}
+
+export default Home
+```
+
+
+## compress
+
+
+---
+title: compress
+description: Next.js provides gzip compression to compress rendered content and static files, it only works with the server target. Learn more about it here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js provides [**gzip**](https://tools.ietf.org/html/rfc6713#section-3) compression to compress rendered content and static files. In general you will want to enable compression on a HTTP proxy like [nginx](https://www.nginx.com/), to offload load from the `Node.js` process.
+
+To disable **compression**, open `next.config.js` and disable the `compress` config:
+
+```js filename="next.config.js"
+module.exports = {
+  compress: false,
+}
+```
+
+
+## devIndicators
+
+
+---
+title: devIndicators
+description: Optimized pages include an indicator to let you know if it's being statically optimized. You can opt-out of it here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<AppOnly>
+
+When you edit your code, and Next.js is compiling the application, a compilation indicator appears in the bottom right corner of the page.
+
+> **Good to know**: This indicator is only present in development mode and will not appear when building and running the app in production mode.
+
+In some cases this indicator can be misplaced on your page, for example, when conflicting with a chat launcher. To change its position, open `next.config.js` and set the `buildActivityPosition` in the `devIndicators` object to `bottom-right` (default), `bottom-left`, `top-right` or `top-left`:
+
+```js filename="next.config.js"
+module.exports = {
+  devIndicators: {
+    buildActivityPosition: 'bottom-right',
+  },
+}
+```
+
+In some cases this indicator might not be useful for you. To remove it, open `next.config.js` and disable the `buildActivity` config in `devIndicators` object:
+
+```js filename="next.config.js"
+module.exports = {
+  devIndicators: {
+    buildActivity: false,
+  },
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Good to know**: This indicator was removed in Next.js version 10.0.1. We recommend upgrading to the latest version of Next.js.
+
+When a page qualifies for [Automatic Static Optimization](/docs/pages/building-your-application/rendering/automatic-static-optimization) we show an indicator to let you know.
+
+This is helpful since automatic static optimization can be very beneficial and knowing immediately in development if the page qualifies can be useful.
+
+In some cases this indicator might not be useful, like when working on electron applications. To remove it open `next.config.js` and disable the `autoPrerender` config in `devIndicators`:
+
+```js filename="next.config.js"
+module.exports = {
+  devIndicators: {
+    autoPrerender: false,
+  },
+}
+```
+
+</PagesOnly>
+
+
+## distDir
+
+
+---
+title: distDir
+description: Set a custom build directory to use instead of the default .next directory.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+You can specify a name to use for a custom build directory to use instead of `.next`.
+
+Open `next.config.js` and add the `distDir` config:
+
+```js filename="next.config.js"
+module.exports = {
+  distDir: 'build',
+}
+```
+
+Now if you run `next build` Next.js will use `build` instead of the default `.next` folder.
+
+> `distDir` **should not** leave your project directory. For example, `../build` is an **invalid** directory.
+
+
+## env
+
+
+---
+title: env
+description: Learn to add and access environment variables in your Next.js application at build time.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<AppOnly>
+
+> Since the release of [Next.js 9.4](https://nextjs.org/blog/next-9-4) we now have a more intuitive and ergonomic experience for [adding environment variables](/docs/app/building-your-application/configuring/environment-variables). Give it a try!
+
+</AppOnly>
+
+<PagesOnly>
+
+> Since the release of [Next.js 9.4](https://nextjs.org/blog/next-9-4) we now have a more intuitive and ergonomic experience for [adding environment variables](/docs/pages/building-your-application/configuring/environment-variables). Give it a try!
+
+</PagesOnly>
+
+<details>
+  <summary>Examples</summary>
+
+- [With env](https://github.com/vercel/next.js/tree/canary/examples/with-env-from-next-config-js)
+
+</details>
+
+<AppOnly>
+
+> **Good to know**: environment variables specified in this way will **always** be included in the JavaScript bundle, prefixing the environment variable name with `NEXT_PUBLIC_` only has an effect when specifying them [through the environment or .env files](/docs/app/building-your-application/configuring/environment-variables).
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Good to know**: environment variables specified in this way will **always** be included in the JavaScript bundle, prefixing the environment variable name with `NEXT_PUBLIC_` only has an effect when specifying them [through the environment or .env files](/docs/pages/building-your-application/configuring/environment-variables).
+
+</PagesOnly>
+
+To add environment variables to the JavaScript bundle, open `next.config.js` and add the `env` config:
+
+```js filename="next.config.js"
+module.exports = {
+  env: {
+    customKey: 'my-value',
+  },
+}
+```
+
+Now you can access `process.env.customKey` in your code. For example:
+
+```jsx
+function Page() {
+  return <h1>The value of customKey is: {process.env.customKey}</h1>
+}
+
+export default Page
+```
+
+Next.js will replace `process.env.customKey` with `'my-value'` at build time. Trying to destructure `process.env` variables won't work due to the nature of webpack [DefinePlugin](https://webpack.js.org/plugins/define-plugin/).
+
+For example, the following line:
+
+```jsx
+return <h1>The value of customKey is: {process.env.customKey}</h1>
+```
+
+Will end up being:
+
+```jsx
+return <h1>The value of customKey is: {'my-value'}</h1>
+```
+
+
+## eslint
+
+
+---
+title: eslint
+description: Next.js reports ESLint errors and warnings during builds by default. Learn how to opt-out of this behavior here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+When ESLint is detected in your project, Next.js fails your **production build** (`next build`) when errors are present.
+
+If you'd like Next.js to produce production code even when your application has ESLint errors, you can disable the built-in linting step completely. This is not recommended unless you already have ESLint configured to run in a separate part of your workflow (for example, in CI or a pre-commit hook).
+
+Open `next.config.js` and enable the `ignoreDuringBuilds` option in the `eslint` config:
+
+```js filename="next.config.js"
+module.exports = {
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
+}
+```
+
+
+## exportPathMap
+
+
+---
+title: exportPathMap (Deprecated)
+nav_title: exportPathMap
+description: Customize the pages that will be exported as HTML files when using `next export`.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+> This feature is exclusive to `next export` and currently **deprecated** in favor of `getStaticPaths` with `pages` or `generateStaticParams` with `app`.
+
+<details>
+  <summary>Examples</summary>
+  
+- [Static Export](https://github.com/vercel/next.js/tree/canary/examples/with-static-export)
+
+</details>
+
+`exportPathMap` allows you to specify a mapping of request paths to page destinations, to be used during export. Paths defined in `exportPathMap` will also be available when using [`next dev`](/docs/app/api-reference/next-cli#development).
+
+Let's start with an example, to create a custom `exportPathMap` for an app with the following pages:
+
+- `pages/index.js`
+- `pages/about.js`
+- `pages/post.js`
+
+Open `next.config.js` and add the following `exportPathMap` config:
+
+```js filename="next.config.js"
+module.exports = {
+  exportPathMap: async function (
+    defaultPathMap,
+    { dev, dir, outDir, distDir, buildId }
+  ) {
+    return {
+      '/': { page: '/' },
+      '/about': { page: '/about' },
+      '/p/hello-nextjs': { page: '/post', query: { title: 'hello-nextjs' } },
+      '/p/learn-nextjs': { page: '/post', query: { title: 'learn-nextjs' } },
+      '/p/deploy-nextjs': { page: '/post', query: { title: 'deploy-nextjs' } },
+    }
+  },
+}
+```
+
+> **Good to know**: the `query` field in `exportPathMap` cannot be used with [automatically statically optimized pages](/docs/pages/building-your-application/rendering/automatic-static-optimization) or [`getStaticProps` pages](/docs/pages/building-your-application/data-fetching/get-static-props) as they are rendered to HTML files at build-time and additional query information cannot be provided during `next export`.
+
+The pages will then be exported as HTML files, for example, `/about` will become `/about.html`.
+
+`exportPathMap` is an `async` function that receives 2 arguments: the first one is `defaultPathMap`, which is the default map used by Next.js. The second argument is an object with:
+
+- `dev` - `true` when `exportPathMap` is being called in development. `false` when running `next export`. In development `exportPathMap` is used to define routes.
+- `dir` - Absolute path to the project directory
+- `outDir` - Absolute path to the `out/` directory ([configurable with `-o`](#customizing-the-output-directory)). When `dev` is `true` the value of `outDir` will be `null`.
+- `distDir` - Absolute path to the `.next/` directory (configurable with the [`distDir`](/docs/pages/api-reference/next-config-js/distDir) config)
+- `buildId` - The generated build id
+
+The returned object is a map of pages where the `key` is the `pathname` and the `value` is an object that accepts the following fields:
+
+- `page`: `String` - the page inside the `pages` directory to render
+- `query`: `Object` - the `query` object passed to `getInitialProps` when prerendering. Defaults to `{}`
+
+> The exported `pathname` can also be a filename (for example, `/readme.md`), but you may need to set the `Content-Type` header to `text/html` when serving its content if it is different than `.html`.
+
+## Adding a trailing slash
+
+It is possible to configure Next.js to export pages as `index.html` files and require trailing slashes, `/about` becomes `/about/index.html` and is routable via `/about/`. This was the default behavior prior to Next.js 9.
+
+To switch back and add a trailing slash, open `next.config.js` and enable the `trailingSlash` config:
+
+```js filename="next.config.js"
+module.exports = {
+  trailingSlash: true,
+}
+```
+
+## Customizing the output directory
+
+<AppOnly>
+
+[`next export`](/docs/app/building-your-application/deploying/static-exports) will use `out` as the default output directory, you can customize this using the `-o` argument, like so:
+
+</AppOnly>
+
+<PagesOnly>
+
+[`next export`](/docs/pages/building-your-application/deploying/static-exports) will use `out` as the default output directory, you can customize this using the `-o` argument, like so:
+
+</PagesOnly>
+
+```bash filename="Terminal"
+next export -o outdir
+```
+
+> **Warning**: Using `exportPathMap` is deprecated and is overridden by `getStaticPaths` inside `pages`. We don't recommend using them together.
+
+
+## generateBuildId
+
+
+---
+title: generateBuildId
+description: Configure the build id, which is used to identify the current build in which your application is being served.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js uses a constant id generated at build time to identify which version of your application is being served. This can cause problems in multi-server deployments when `next build` is run on every server. In order to keep a consistent build id between builds you can provide your own build id.
+
+Open `next.config.js` and add the `generateBuildId` function:
+
+```js filename="next.config.js"
+module.exports = {
+  generateBuildId: async () => {
+    // You can, for example, get the latest git commit hash here
+    return 'my-build-id'
+  },
+}
+```
+
+
+## generateEtags
+
+
+---
+title: generateEtags
+description: Next.js will generate etags for every page by default. Learn more about how to disable etag generation here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js will generate [etags](https://en.wikipedia.org/wiki/HTTP_ETag) for every page by default. You may want to disable etag generation for HTML pages depending on your cache strategy.
+
+Open `next.config.js` and disable the `generateEtags` option:
+
+```js filename="next.config.js"
+module.exports = {
+  generateEtags: false,
+}
+```
+
+
+## headers
+
+
+---
+title: headers
+description: Add custom HTTP headers to your Next.js app.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Headers allow you to set custom HTTP headers on the response to an incoming request on a given path.
+
+To set custom HTTP headers you can use the `headers` key in `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/about',
+        headers: [
+          {
+            key: 'x-custom-header',
+            value: 'my custom header value',
+          },
+          {
+            key: 'x-another-custom-header',
+            value: 'my other custom header value',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+`headers` is an async function that expects an array to be returned holding objects with `source` and `headers` properties:
+
+- `source` is the incoming request path pattern.
+- `headers` is an array of response header objects, with `key` and `value` properties.
+- `basePath`: `false` or `undefined` - if false the basePath won't be included when matching, can be used for external rewrites only.
+- `locale`: `false` or `undefined` - whether the locale should not be included when matching.
+- `has` is an array of [has objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+- `missing` is an array of [missing objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+
+Headers are checked before the filesystem which includes pages and `/public` files.
+
+## Header Overriding Behavior
+
+If two headers match the same path and set the same header key, the last header key will override the first. Using the below headers, the path `/hello` will result in the header `x-hello` being `world` due to the last header value set being `world`.
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'there',
+          },
+        ],
+      },
+      {
+        source: '/hello',
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Path Matching
+
+Path matches are allowed, for example `/blog/:slug` will match `/blog/hello-world` (no nested paths):
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/blog/:slug',
+        headers: [
+          {
+            key: 'x-slug',
+            value: ':slug', // Matched parameters can be used in the value
+          },
+          {
+            key: 'x-slug-:slug', // Matched parameters can be used in the key
+            value: 'my other custom header value',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+### Wildcard Path Matching
+
+To match a wildcard path you can use `*` after a parameter, for example `/blog/:slug*` will match `/blog/a/b/c/d/hello-world`:
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/blog/:slug*',
+        headers: [
+          {
+            key: 'x-slug',
+            value: ':slug*', // Matched parameters can be used in the value
+          },
+          {
+            key: 'x-slug-:slug*', // Matched parameters can be used in the key
+            value: 'my other custom header value',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+### Regex Path Matching
+
+To match a regex path you can wrap the regex in parenthesis after a parameter, for example `/blog/:slug(\\d{1,})` will match `/blog/123` but not `/blog/abc`:
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/blog/:post(\\d{1,})',
+        headers: [
+          {
+            key: 'x-post',
+            value: ':post',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+The following characters `(`, `)`, `{`, `}`, `:`, `*`, `+`, `?` are used for regex path matching, so when used in the `source` as non-special values they must be escaped by adding `\\` before them:
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      {
+        // this will match `/english(default)/something` being requested
+        source: '/english\\(default\\)/:slug',
+        headers: [
+          {
+            key: 'x-header',
+            value: 'value',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Header, Cookie, and Query Matching
+
+To only apply a header when header, cookie, or query values also match the `has` field or don't match the `missing` field can be used. Both the `source` and all `has` items must match and all `missing` items must not match for the header to be applied.
+
+`has` and `missing` items can have the following fields:
+
+- `type`: `String` - must be either `header`, `cookie`, `host`, or `query`.
+- `key`: `String` - the key from the selected type to match against.
+- `value`: `String` or `undefined` - the value to check for, if undefined any value will match. A regex like string can be used to capture a specific part of the value, e.g. if the value `first-(?<paramName>.*)` is used for `first-second` then `second` will be usable in the destination with `:paramName`.
+
+```js filename="next.config.js"
+module.exports = {
+  async headers() {
+    return [
+      // if the header `x-add-header` is present,
+      // the `x-another-header` header will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-add-header',
+          },
+        ],
+        headers: [
+          {
+            key: 'x-another-header',
+            value: 'hello',
+          },
+        ],
+      },
+      // if the header `x-no-header` is not present,
+      // the `x-another-header` header will be applied
+      {
+        source: '/:path*',
+        missing: [
+          {
+            type: 'header',
+            key: 'x-no-header',
+          },
+        ],
+        headers: [
+          {
+            key: 'x-another-header',
+            value: 'hello',
+          },
+        ],
+      },
+      // if the source, query, and cookie are matched,
+      // the `x-authorized` header will be applied
+      {
+        source: '/specific/:path*',
+        has: [
+          {
+            type: 'query',
+            key: 'page',
+            // the page value will not be available in the
+            // header key/values since value is provided and
+            // doesn't use a named capture group e.g. (?<page>home)
+            value: 'home',
+          },
+          {
+            type: 'cookie',
+            key: 'authorized',
+            value: 'true',
+          },
+        ],
+        headers: [
+          {
+            key: 'x-authorized',
+            value: ':authorized',
+          },
+        ],
+      },
+      // if the header `x-authorized` is present and
+      // contains a matching value, the `x-another-header` will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-authorized',
+            value: '(?<authorized>yes|true)',
+          },
+        ],
+        headers: [
+          {
+            key: 'x-another-header',
+            value: ':authorized',
+          },
+        ],
+      },
+      // if the host is `example.com`,
+      // this header will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'example.com',
+          },
+        ],
+        headers: [
+          {
+            key: 'x-another-header',
+            value: ':authorized',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Headers with basePath support
+
+When leveraging [`basePath` support](/docs/app/api-reference/next-config-js/basePath) with headers each `source` is automatically prefixed with the `basePath` unless you add `basePath: false` to the header:
+
+```js filename="next.config.js"
+module.exports = {
+  basePath: '/docs',
+
+  async headers() {
+    return [
+      {
+        source: '/with-basePath', // becomes /docs/with-basePath
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+      {
+        source: '/without-basePath', // is not modified since basePath: false is set
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+        basePath: false,
+      },
+    ]
+  },
+}
+```
+
+## Headers with i18n support
+
+<AppOnly>
+
+When leveraging [`i18n` support](/docs/app/building-your-application/routing/internationalization) with headers each `source` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the header. If `locale: false` is used you must prefix the `source` with a locale for it to be matched correctly.
+
+</AppOnly>
+
+<PagesOnly>
+
+When leveraging [`i18n` support](/docs/pages/building-your-application/routing/internationalization) with headers each `source` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the header. If `locale: false` is used you must prefix the `source` with a locale for it to be matched correctly.
+
+</PagesOnly>
+
+```js filename="next.config.js"
+module.exports = {
+  i18n: {
+    locales: ['en', 'fr', 'de'],
+    defaultLocale: 'en',
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/with-locale', // automatically handles all locales
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+      {
+        // does not handle locales automatically since locale: false is set
+        source: '/nl/with-locale-manual',
+        locale: false,
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+      {
+        // this matches '/' since `en` is the defaultLocale
+        source: '/en',
+        locale: false,
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+      {
+        // this gets converted to /(en|fr|de)/(.*) so will not match the top-level
+        // `/` or `/fr` routes like /:path* would
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'x-hello',
+            value: 'world',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Cache-Control
+
+You cannot set `Cache-Control` headers in `next.config.js` for pages or assets, as these headers will be overwritten in production to ensure that responses and static assets are cached effectively.
+
+<AppOnly>
+
+Learn more about [caching](/docs/app/building-your-application/caching) with the App Router.
+
+</AppOnly>
+
+<PagesOnly>
+
+If you need to revalidate the cache of a page that has been [statically generated](/docs/pages/building-your-application/rendering/static-site-generation), you can do so by setting the `revalidate` prop in the page's [`getStaticProps`](/docs/pages/building-your-application/data-fetching/get-static-props) function.
+
+You can set the `Cache-Control` header in your [API Routes](/docs/pages/building-your-application/routing/api-routes) by using the `res.setHeader` method:
+
+```ts filename="pages/api/hello.ts" switcher
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+type ResponseData = {
+  message: string
+}
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+) {
+  res.setHeader('Cache-Control', 's-maxage=86400')
+  res.status(200).json({ message: 'Hello from Next.js!' })
+}
+```
+
+```js filename="pages/api/hello.js" switcher
+export default function handler(req, res) {
+  res.setHeader('Cache-Control', 's-maxage=86400')
+  res.status(200).json({ message: 'Hello from Next.js!' })
+}
+```
+
+</PagesOnly>
+
+## Options
+
+### X-DNS-Prefetch-Control
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/X-DNS-Prefetch-Control) controls DNS prefetching, allowing browsers to proactively perform domain name resolution on external links, images, CSS, JavaScript, and more. This prefetching is performed in the background, so the [DNS](https://developer.mozilla.org/docs/Glossary/DNS) is more likely to be resolved by the time the referenced items are needed. This reduces latency when the user clicks a link.
+
+```js
+{
+  key: 'X-DNS-Prefetch-Control',
+  value: 'on'
+}
+```
+
+### Strict-Transport-Security
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/Strict-Transport-Security) informs browsers it should only be accessed using HTTPS, instead of using HTTP. Using the configuration below, all present and future subdomains will use HTTPS for a `max-age` of 2 years. This blocks access to pages or subdomains that can only be served over HTTP.
+
+If you're deploying to [Vercel](https://vercel.com/docs/concepts/edge-network/headers#strict-transport-security?utm_source=next-site&utm_medium=docs&utm_campaign=next-website), this header is not necessary as it's automatically added to all deployments unless you declare `headers` in your `next.config.js`.
+
+```js
+{
+  key: 'Strict-Transport-Security',
+  value: 'max-age=63072000; includeSubDomains; preload'
+}
+```
+
+### X-Frame-Options
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/X-Frame-Options) indicates whether the site should be allowed to be displayed within an `iframe`. This can prevent against clickjacking attacks.
+
+**This header has been superseded by CSP's `frame-ancestors` option**, which has better support in modern browsers.
+
+```js
+{
+  key: 'X-Frame-Options',
+  value: 'SAMEORIGIN'
+}
+```
+
+### Permissions-Policy
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/Permissions-Policy) allows you to control which features and APIs can be used in the browser. It was previously named `Feature-Policy`.
+
+```js
+{
+  key: 'Permissions-Policy',
+  value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()'
+}
+```
+
+### X-Content-Type-Options
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/X-Content-Type-Options) prevents the browser from attempting to guess the type of content if the `Content-Type` header is not explicitly set. This can prevent XSS exploits for websites that allow users to upload and share files.
+
+For example, a user trying to download an image, but having it treated as a different `Content-Type` like an executable, which could be malicious. This header also applies to downloading browser extensions. The only valid value for this header is `nosniff`.
+
+```js
+{
+  key: 'X-Content-Type-Options',
+  value: 'nosniff'
+}
+```
+
+### Referrer-Policy
+
+[This header](https://developer.mozilla.org/docs/Web/HTTP/Headers/Referrer-Policy) controls how much information the browser includes when navigating from the current website (origin) to another.
+
+```js
+{
+  key: 'Referrer-Policy',
+  value: 'origin-when-cross-origin'
+}
+```
+
+### Content-Security-Policy
+
+Learn more about adding a [Content Security Policy](/docs/app/building-your-application/configuring/content-security-policy) to your application.
+
+## Version History
+
+| Version   | Changes          |
+| --------- | ---------------- |
+| `v13.3.0` | `missing` added. |
+| `v10.2.0` | `has` added.     |
+| `v9.5.0`  | Headers added.   |
+
+
+## httpAgentOptions
+
+
+---
+title: httpAgentOptions
+description: Next.js will automatically use HTTP Keep-Alive by default. Learn more about how to disable HTTP Keep-Alive here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+In Node.js versions prior to 18, Next.js automatically polyfills `fetch()` with [undici](/docs/architecture/supported-browsers#polyfills) and enables [HTTP Keep-Alive](https://developer.mozilla.org/docs/Web/HTTP/Headers/Keep-Alive) by default.
+
+To disable HTTP Keep-Alive for all `fetch()` calls on the server-side, open `next.config.js` and add the `httpAgentOptions` config:
+
+```js filename="next.config.js"
+module.exports = {
+  httpAgentOptions: {
+    keepAlive: false,
+  },
+}
+```
+
+
+## images
+
+
+---
+title: images
+description: Custom configuration for the next/image loader
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+If you want to use a cloud provider to optimize images instead of using the Next.js built-in Image Optimization API, you can configure `next.config.js` with the following:
+
+```js filename="next.config.js"
+module.exports = {
+  images: {
+    loader: 'custom',
+    loaderFile: './my/image/loader.js',
+  },
+}
+```
+
+This `loaderFile` must point to a file relative to the root of your Next.js application. The file must export a default function that returns a string, for example:
+
+```js
+export default function myImageLoader({ src, width, quality }) {
+  return `https://example.com/${src}?w=${width}&q=${quality || 75}`
+}
+```
+
+<AppOnly>
+
+Alternatively, you can use the [`loader` prop](/docs/app/api-reference/components/image#loader) to pass the function to each instance of `next/image`.
+
+</AppOnly>
+
+<PagesOnly>
+
+Alternatively, you can use the [`loader` prop](/docs/pages/api-reference/components/image#loader) to pass the function to each instance of `next/image`.
+
+</PagesOnly>
+
+## Example Loader Configuration
+
+- [Akamai](#akamai)
+- [Cloudinary](#cloudinary)
+- [Cloudflare](#cloudflare)
+- [Contentful](#contentful)
+- [Fastly](#fastly)
+- [Gumlet](#gumlet)
+- [ImageEngine](#imageengine)
+- [Imgix](#imgix)
+- [Thumbor](#thumbor)
+- [Sanity](#sanity)
+- [Supabase](#supabase)
+
+### Akamai
+
+```js
+// Docs: https://techdocs.akamai.com/ivm/reference/test-images-on-demand
+export default function akamaiLoader({ src, width, quality }) {
+  return `https://example.com/${src}?imwidth=${width}`
+}
+```
+
+### Cloudinary
+
+```js
+// Demo: https://res.cloudinary.com/demo/image/upload/w_300,c_limit,q_auto/turtles.jpg
+export default function cloudinaryLoader({ src, width, quality }) {
+  const params = ['f_auto', 'c_limit', `w_${width}`, `q_${quality || 'auto'}`]
+  return `https://example.com/${params.join(',')}${src}`
+}
+```
+
+### Cloudflare
+
+```js
+// Docs: https://developers.cloudflare.com/images/url-format
+export default function cloudflareLoader({ src, width, quality }) {
+  const params = [`width=${width}`, `quality=${quality || 75}`, 'format=auto']
+  return `https://example.com/cdn-cgi/image/${params.join(',')}/${src}`
+}
+```
+
+### Contentful
+
+```js
+// Docs: https://www.contentful.com/developers/docs/references/images-api/
+export default function contentfulLoader({ src, width, quality }) {
+  const url = new URL(`https://example.com${src}`)
+  url.searchParams.set('fm', 'webp')
+  url.searchParams.set('w', width.toString())
+  url.searchParams.set('q', (quality || 75).toString())
+  return url.href
+}
+```
+
+### Fastly
+
+```js
+// Docs: https://developer.fastly.com/reference/io/
+export default function fastlyLoader({ src, width, quality }) {
+  const url = new URL(`https://example.com${src}`)
+  url.searchParams.set('auto', 'webp')
+  url.searchParams.set('width', width.toString())
+  url.searchParams.set('quality', (quality || 75).toString())
+  return url.href
+}
+```
+
+### Gumlet
+
+```js
+// Docs: https://docs.gumlet.com/reference/image-transform-size
+export default function gumletLoader({ src, width, quality }) {
+  const url = new URL(`https://example.com${src}`)
+  url.searchParams.set('format', 'auto')
+  url.searchParams.set('w', width.toString())
+  url.searchParams.set('q', (quality || 75).toString())
+  return url.href
+}
+```
+
+### ImageEngine
+
+```js
+// Docs: https://support.imageengine.io/hc/en-us/articles/360058880672-Directives
+export default function imageengineLoader({ src, width, quality }) {
+  const compression = 100 - (quality || 50)
+  const params = [`w_${width}`, `cmpr_${compression}`)]
+  return `https://example.com${src}?imgeng=/${params.join('/')`
+}
+```
+
+### Imgix
+
+```js
+// Demo: https://static.imgix.net/daisy.png?format=auto&fit=max&w=300
+export default function imgixLoader({ src, width, quality }) {
+  const url = new URL(`https://example.com${src}`)
+  const params = url.searchParams
+  params.set('auto', params.getAll('auto').join(',') || 'format')
+  params.set('fit', params.get('fit') || 'max')
+  params.set('w', params.get('w') || width.toString())
+  params.set('q', (quality || 50).toString())
+  return url.href
+}
+```
+
+### Thumbor
+
+```js
+// Docs: https://thumbor.readthedocs.io/en/latest/
+export default function thumborLoader({ src, width, quality }) {
+  const params = [`${width}x0`, `filters:quality(${quality || 75})`]
+  return `https://example.com${params.join('/')}${src}`
+}
+```
+
+### Sanity
+
+```js
+// Docs: https://www.sanity.io/docs/image-urls
+export default function sanityLoader({ src, width, quality }) {
+  const prj = 'zp7mbokg'
+  const dataset = 'production'
+  const url = new URL(`https://cdn.sanity.io/images/${prj}/${dataset}${src}`)
+  url.searchParams.set('auto', 'format')
+  url.searchParams.set('fit', 'max')
+  url.searchParams.set('w', width.toString())
+  if (quality) {
+    url.searchParams.set('q', quality.toString())
+  }
+  return url.href
+}
+```
+
+### Supabase
+
+```js
+// Docs: https://supabase.com/docs/guides/storage/image-transformations#nextjs-loader
+export default function supabaseLoader({ src, width, quality }) {
+  const url = new URL(`https://example.com${src}`)
+  url.searchParams.set('width', width.toString())
+  url.searchParams.set('quality', (quality || 75).toString())
+  return url.href
+}
+```
+
+
+## incrementalCacheHandlerPath
+
+
+---
+title: incrementalCacheHandlerPath
+description: Configure the Next.js cache used for storing and revalidating data.
+---
+
+In Next.js, the [default cache handler](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating) uses the filesystem cache. This requires no configuration, however, you can customize the cache handler by using the `incrementalCacheHandlerPath` field in `next.config.js`.
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
+  },
+}
+```
+
+Here's an example of a custom cache handler:
+
+```js filename="cache-handler.js"
+const cache = new Map()
+
+module.exports = class CacheHandler {
+  constructor(options) {
+    this.options = options
+    this.cache = {}
+  }
+
+  async get(key) {
+    return cache.get(key)
+  }
+
+  async set(key, data) {
+    cache.set(key, {
+      value: data,
+      lastModified: Date.now(),
+    })
+  }
+}
+```
+
+## API Reference
+
+The cache handler can implement the following methods: `get`, `set`, and `revalidateTag`.
+
+### `get()`
+
+| Parameter | Type     | Description                  |
+| --------- | -------- | ---------------------------- |
+| `key`     | `string` | The key to the cached value. |
+
+Returns the cached value or `null` if not found.
+
+### `set()`
+
+| Parameter | Type           | Description                      |
+| --------- | -------------- | -------------------------------- |
+| `key`     | `string`       | The key to store the data under. |
+| `data`    | Data or `null` | The data to be cached.           |
+
+Returns `Promise<void>`.
+
+### `revalidateTag()`
+
+| Parameter | Type     | Description                  |
+| --------- | -------- | ---------------------------- |
+| `tag`     | `string` | The cache tag to revalidate. |
+
+Returns `Promise<void>`. Learn more about [revalidating data](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating) or the [`revalidateTag()`](/docs/app/api-reference/functions/revalidateTag) function.
+
+
+## index
+
+
+---
+title: next.config.js Options
+description: Learn how to configure your application with next.config.js.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js can be configured through a `next.config.js` file in the root of your project directory (for example, by `package.json`).
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  /* config options here */
+}
+
+module.exports = nextConfig
+```
+
+`next.config.js` is a regular Node.js module, not a JSON file. It gets used by the Next.js server and build phases, and it's not included in the browser build.
+
+If you need [ECMAScript modules](https://nodejs.org/api/esm.html), you can use `next.config.mjs`:
+
+```js filename="next.config.mjs"
+/**
+ * @type {import('next').NextConfig}
+ */
+const nextConfig = {
+  /* config options here */
+}
+
+export default nextConfig
+```
+
+You can also use a function:
+
+```js filename="next.config.mjs"
+export default (phase, { defaultConfig }) => {
+  /**
+   * @type {import('next').NextConfig}
+   */
+  const nextConfig = {
+    /* config options here */
+  }
+  return nextConfig
+}
+```
+
+Since Next.js 12.1.0, you can use an async function:
+
+```js filename="next.config.js"
+module.exports = async (phase, { defaultConfig }) => {
+  /**
+   * @type {import('next').NextConfig}
+   */
+  const nextConfig = {
+    /* config options here */
+  }
+  return nextConfig
+}
+```
+
+`phase` is the current context in which the configuration is loaded. You can see the [available phases](https://github.com/vercel/next.js/blob/5e6b008b561caf2710ab7be63320a3d549474a5b/packages/next/shared/lib/constants.ts#L19-L23). Phases can be imported from `next/constants`:
+
+```js
+const { PHASE_DEVELOPMENT_SERVER } = require('next/constants')
+
+module.exports = (phase, { defaultConfig }) => {
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    return {
+      /* development only config options here */
+    }
+  }
+
+  return {
+    /* config options for all phases except development here */
+  }
+}
+```
+
+The commented lines are the place where you can put the configs allowed by `next.config.js`, which are [defined in this file](https://github.com/vercel/next.js/blob/canary/packages/next/src/server/config-shared.ts).
+
+However, none of the configs are required, and it's not necessary to understand what each config does. Instead, search for the features you need to enable or modify in this section and they will show you what to do.
+
+> Avoid using new JavaScript features not available in your target Node.js version. `next.config.js` will not be parsed by Webpack, Babel or TypeScript.
+
+This page documents all the available configuration options:
+
+
+## logging
+
+
+---
+title: logging
+description: Configure how data fetches are logged to the console when running Next.js in development mode.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+You can configure the logging level and whether the full URL is logged to the console when running Next.js in development mode.
+
+Currently, `logging` only applies to data fetching using the `fetch` API. It does not yet apply to other logs inside of Next.js.
+
+```js filename="next.config.js"
+module.exports = {
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
+}
+```
+
+
+## mdxRs
+
+
+---
+title: mdxRs
+description: Use the new Rust compiler to compile MDX files in the App Router.
+---
+
+For use with `@next/mdx`. Compile MDX files using the new Rust compiler.
+
+```js filename="next.config.js"
+const withMDX = require('@next/mdx')()
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  pageExtensions: ['ts', 'tsx', 'mdx'],
+  experimental: {
+    mdxRs: true,
+  },
+}
+
+module.exports = withMDX(nextConfig)
+```
+
+
+## onDemandEntries
+
+
+---
+title: onDemandEntries
+description: Configure how Next.js will dispose and keep in memory pages created in development.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js exposes some options that give you some control over how the server will dispose or keep in memory built pages in development.
+
+To change the defaults, open `next.config.js` and add the `onDemandEntries` config:
+
+```js filename="next.config.js"
+module.exports = {
+  onDemandEntries: {
+    // period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
+}
+```
+
+
+## optimizePackageImports
+
+
+---
+title: optimizePackageImports
+description: API Reference for optmizedPackageImports Next.js Config Option
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Some packages can export hundreds or thousands of modules, which can cause performance issues in development and production.
+
+Adding a package to `experimental.optimizePackageImports` will only load the modules you are actually using, while still giving you the convenience of writing import statements with many named exports.
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    optimizePackageImports: ['package-name'],
+  },
+}
+```
+
+Libraries like `@mui/icons-material`, `@mui/material`, `date-fns`, `lodash`, `lodash-es`, `react-bootstrap`, `@headlessui/react`, `@heroicons/react`, and `lucide-react` are already optimized by default.
+
+
+## output
+
+
+---
+title: output
+description: Next.js automatically traces which files are needed by each page to allow for easy deployment of your application. Learn how it works here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+During a build, Next.js will automatically trace each page and its dependencies to determine all of the files that are needed for deploying a production version of your application.
+
+This feature helps reduce the size of deployments drastically. Previously, when deploying with Docker you would need to have all files from your package's `dependencies` installed to run `next start`. Starting with Next.js 12, you can leverage Output File Tracing in the `.next/` directory to only include the necessary files.
+
+Furthermore, this removes the need for the deprecated `serverless` target which can cause various issues and also creates unnecessary duplication.
+
+## How it Works
+
+During `next build`, Next.js will use [`@vercel/nft`](https://github.com/vercel/nft) to statically analyze `import`, `require`, and `fs` usage to determine all files that a page might load.
+
+Next.js' production server is also traced for its needed files and output at `.next/next-server.js.nft.json` which can be leveraged in production.
+
+To leverage the `.nft.json` files emitted to the `.next` output directory, you can read the list of files in each trace that are relative to the `.nft.json` file and then copy them to your deployment location.
+
+## Automatically Copying Traced Files
+
+Next.js can automatically create a `standalone` folder that copies only the necessary files for a production deployment including select files in `node_modules`.
+
+To leverage this automatic copying you can enable it in your `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  output: 'standalone',
+}
+```
+
+This will create a folder at `.next/standalone` which can then be deployed on its own without installing `node_modules`.
+
+Additionally, a minimal `server.js` file is also output which can be used instead of `next start`. This minimal server does not copy the `public` or `.next/static` folders by default as these should ideally be handled by a CDN instead, although these folders can be copied to the `standalone/public` and `standalone/.next/static` folders manually, after which `server.js` file will serve these automatically.
+
+<AppOnly>
+
+> **Good to know**:
+>
+> - If your project needs to listen to a specific port or hostname, you can define `PORT` or `HOSTNAME` environment variables before running `server.js`. For example, run `PORT=8080 HOSTNAME=0.0.0.0 node server.js` to start the server on `http://0.0.0.0:8080`.
+> - If your project uses [Image Optimization](/docs/app/building-your-application/optimizing/images) with the default `loader`, you must install `sharp` as a dependency:
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Good to know**:
+>
+> - `next.config.js` is read during `next build` and serialized into the `server.js` output file. If the legacy [`serverRuntimeConfig` or `publicRuntimeConfig` options](/docs/pages/api-reference/next-config-js/runtime-configuration) are being used, the values will be specific to values at build time.
+> - If your project needs to listen to a specific port or hostname, you can define `PORT` or `HOSTNAME` environment variables before running `server.js`. For example, run `PORT=8080 HOSTNAME=0.0.0.0 node server.js` to start the server on `http://0.0.0.0:8080`.
+> - If your project uses [Image Optimization](/docs/pages/building-your-application/optimizing/images) with the default `loader`, you must install `sharp` as a dependency:
+
+</PagesOnly>
+
+```bash filename="Terminal"
+npm i sharp
+```
+
+```bash filename="Terminal"
+yarn add sharp
+```
+
+```bash filename="Terminal"
+pnpm add sharp
+```
+
+```bash filename="Terminal"
+bun add sharp
+```
+
+## Caveats
+
+- While tracing in monorepo setups, the project directory is used for tracing by default. For `next build packages/web-app`, `packages/web-app` would be the tracing root and any files outside of that folder will not be included. To include files outside of this folder you can set `experimental.outputFileTracingRoot` in your `next.config.js`.
+
+```js filename="packages/web-app/next.config.js"
+module.exports = {
+  experimental: {
+    // this includes files from the monorepo base two directories up
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+  },
+}
+```
+
+- There are some cases in which Next.js might fail to include required files, or might incorrectly include unused files. In those cases, you can leverage `experimental.outputFileTracingExcludes` and `experimental.outputFileTracingIncludes` respectively in `next.config.js`. Each config accepts an object with [minimatch globs](https://www.npmjs.com/package/minimatch) for the key to match specific pages and a value of an array with globs relative to the project's root to either include or exclude in the trace.
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    outputFileTracingExcludes: {
+      '/api/hello': ['./un-necessary-folder/**/*'],
+    },
+    outputFileTracingIncludes: {
+      '/api/another': ['./necessary-folder/**/*'],
+    },
+  },
+}
+```
+
+- Currently, Next.js does not do anything with the emitted `.nft.json` files. The files must be read by your deployment platform, for example [Vercel](https://vercel.com), to create a minimal deployment. In a future release, a new command is planned to utilize these `.nft.json` files.
+
+## Experimental `turbotrace`
+
+Tracing dependencies can be slow because it requires very complex computations and analysis. We created `turbotrace` in Rust as a faster and smarter alternative to the JavaScript implementation.
+
+To enable it, you can add the following configuration to your `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    turbotrace: {
+      // control the log level of the turbotrace, default is `error`
+      logLevel?:
+      | 'bug'
+      | 'fatal'
+      | 'error'
+      | 'warning'
+      | 'hint'
+      | 'note'
+      | 'suggestions'
+      | 'info',
+      // control if the log of turbotrace should contain the details of the analysis, default is `false`
+      logDetail?: boolean
+      // show all log messages without limit
+      // turbotrace only show 1 log message for each categories by default
+      logAll?: boolean
+      // control the context directory of the turbotrace
+      // files outside of the context directory will not be traced
+      // set the `experimental.outputFileTracingRoot` has the same effect
+      // if the `experimental.outputFileTracingRoot` and this option are both set, the `experimental.turbotrace.contextDirectory` will be used
+      contextDirectory?: string
+      // if there is `process.cwd()` expression in your code, you can set this option to tell `turbotrace` the value of `process.cwd()` while tracing.
+      // for example the require(process.cwd() + '/package.json') will be traced as require('/path/to/cwd/package.json')
+      processCwd?: string
+      // control the maximum memory usage of the `turbotrace`, in `MB`, default is `6000`.
+      memoryLimit?: number
+    },
+  },
+}
+```
+
+
+## pageExtensions
+
+
+---
+title: pageExtensions
+description: Extend the default page extensions used by Next.js when resolving pages in the Pages Router.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<AppOnly>
+
+By default, Next.js accepts files with the following extensions: `.tsx`, `.ts`, `.jsx`, `.js`. This can be modified to allow other extensions like markdown (`.md`, `.mdx`).
+
+```js filename="next.config.js"
+const withMDX = require('@next/mdx')()
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  pageExtensions: ['ts', 'tsx', 'mdx'],
+  experimental: {
+    mdxRs: true,
+  },
+}
+
+module.exports = withMDX(nextConfig)
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+You can extend the default Page extensions (`.tsx`, `.ts`, `.jsx`, `.js`) used by Next.js. Inside `next.config.js`, add the `pageExtensions` config:
+
+```js filename="next.config.js"
+module.exports = {
+  pageExtensions: ['mdx', 'md', 'jsx', 'js', 'tsx', 'ts'],
+}
+```
+
+Changing these values affects _all_ Next.js pages, including the following:
+
+- [`middleware.js`](/docs/pages/building-your-application/routing/middleware)
+- [`instrumentation.js`](/docs/pages/building-your-application/optimizing/instrumentation)
+- `pages/_document.js`
+- `pages/_app.js`
+- `pages/api/`
+
+For example, if you reconfigure `.ts` page extensions to `.page.ts`, you would need to rename pages like `middleware.page.ts`, `instrumentation.page.ts`, `_app.page.ts`.
+
+## Including non-page files in the `pages` directory
+
+You can colocate test files or other files used by components in the `pages` directory. Inside `next.config.js`, add the `pageExtensions` config:
+
+```js filename="next.config.js"
+module.exports = {
+  pageExtensions: ['page.tsx', 'page.ts', 'page.jsx', 'page.js'],
+}
+```
+
+Then, rename your pages to have a file extension that includes `.page` (e.g. rename `MyPage.tsx` to `MyPage.page.tsx`). Ensure you rename _all_ Next.js pages, including the files mentioned above.
+
+</PagesOnly>
+
+
+## poweredByHeader
+
+
+---
+title: poweredByHeader
+description: Next.js will add the `x-powered-by` header by default. Learn to opt-out of it here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+By default Next.js will add the `x-powered-by` header. To opt-out of it, open `next.config.js` and disable the `poweredByHeader` config:
+
+```js filename="next.config.js"
+module.exports = {
+  poweredByHeader: false,
+}
+```
+
+
+## productionBrowserSourceMaps
+
+
+---
+title: productionBrowserSourceMaps
+description: Enables browser source map generation during the production build.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Source Maps are enabled by default during development. During production builds, they are disabled to prevent you leaking your source on the client, unless you specifically opt-in with the configuration flag.
+
+Next.js provides a configuration flag you can use to enable browser source map generation during the production build:
+
+```js filename="next.config.js"
+module.exports = {
+  productionBrowserSourceMaps: true,
+}
+```
+
+When the `productionBrowserSourceMaps` option is enabled, the source maps will be output in the same directory as the JavaScript files. Next.js will automatically serve these files when requested.
+
+- Adding source maps can increase `next build` time
+- Increases memory usage during `next build`
+
+
+## reactStrictMode
+
+
+---
+title: reactStrictMode
+description: The complete Next.js runtime is now Strict Mode-compliant, learn how to opt-in
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+> **Good to know**: Since Next.js 13.4, Strict Mode is `true` by default with `app` router, so the above configuration is only necessary for `pages`. You can still disable Strict Mode by setting `reactStrictMode: false`.
+
+> **Suggested**: We strongly suggest you enable Strict Mode in your Next.js application to better prepare your application for the future of React.
+
+React's [Strict Mode](https://react.dev/reference/react/StrictMode) is a development mode only feature for highlighting potential problems in an application. It helps to identify unsafe lifecycles, legacy API usage, and a number of other features.
+
+The Next.js runtime is Strict Mode-compliant. To opt-in to Strict Mode, configure the following option in your `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  reactStrictMode: true,
+}
+```
+
+If you or your team are not ready to use Strict Mode in your entire application, that's OK! You can incrementally migrate on a page-by-page basis using `<React.StrictMode>`.
+
+
+## redirects
+
+
+---
+title: redirects
+description: Add redirects to your Next.js app.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Redirects allow you to redirect an incoming request path to a different destination path.
+
+To use redirects you can use the `redirects` key in `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      {
+        source: '/about',
+        destination: '/',
+        permanent: true,
+      },
+    ]
+  },
+}
+```
+
+`redirects` is an async function that expects an array to be returned holding objects with `source`, `destination`, and `permanent` properties:
+
+- `source` is the incoming request path pattern.
+- `destination` is the path you want to route to.
+- `permanent` `true` or `false` - if `true` will use the 308 status code which instructs clients/search engines to cache the redirect forever, if `false` will use the 307 status code which is temporary and is not cached.
+
+> **Why does Next.js use 307 and 308?** Traditionally a 302 was used for a temporary redirect, and a 301 for a permanent redirect, but many browsers changed the request method of the redirect to `GET`, regardless of the original method. For example, if the browser made a request to `POST /v1/users` which returned status code `302` with location `/v2/users`, the subsequent request might be `GET /v2/users` instead of the expected `POST /v2/users`. Next.js uses the 307 temporary redirect, and 308 permanent redirect status codes to explicitly preserve the request method used.
+
+- `basePath`: `false` or `undefined` - if false the `basePath` won't be included when matching, can be used for external redirects only.
+- `locale`: `false` or `undefined` - whether the locale should not be included when matching.
+- `has` is an array of [has objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+- `missing` is an array of [missing objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+
+Redirects are checked before the filesystem which includes pages and `/public` files.
+
+Redirects are not applied to client-side routing (`Link`, `router.push`), unless [Middleware](/docs/app/building-your-application/routing/middleware) is present and matches the path.
+
+When a redirect is applied, any query values provided in the request will be passed through to the redirect destination. For example, see the following redirect configuration:
+
+```js
+{
+  source: '/old-blog/:path*',
+  destination: '/blog/:path*',
+  permanent: false
+}
+```
+
+When `/old-blog/post-1?hello=world` is requested, the client will be redirected to `/blog/post-1?hello=world`.
+
+## Path Matching
+
+Path matches are allowed, for example `/old-blog/:slug` will match `/old-blog/hello-world` (no nested paths):
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      {
+        source: '/old-blog/:slug',
+        destination: '/news/:slug', // Matched parameters can be used in the destination
+        permanent: true,
+      },
+    ]
+  },
+}
+```
+
+### Wildcard Path Matching
+
+To match a wildcard path you can use `*` after a parameter, for example `/blog/:slug*` will match `/blog/a/b/c/d/hello-world`:
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      {
+        source: '/blog/:slug*',
+        destination: '/news/:slug*', // Matched parameters can be used in the destination
+        permanent: true,
+      },
+    ]
+  },
+}
+```
+
+### Regex Path Matching
+
+To match a regex path you can wrap the regex in parentheses after a parameter, for example `/post/:slug(\\d{1,})` will match `/post/123` but not `/post/abc`:
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      {
+        source: '/post/:slug(\\d{1,})',
+        destination: '/news/:slug', // Matched parameters can be used in the destination
+        permanent: false,
+      },
+    ]
+  },
+}
+```
+
+The following characters `(`, `)`, `{`, `}`, `:`, `*`, `+`, `?` are used for regex path matching, so when used in the `source` as non-special values they must be escaped by adding `\\` before them:
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      {
+        // this will match `/english(default)/something` being requested
+        source: '/english\\(default\\)/:slug',
+        destination: '/en-us/:slug',
+        permanent: false,
+      },
+    ]
+  },
+}
+```
+
+## Header, Cookie, and Query Matching
+
+To only match a redirect when header, cookie, or query values also match the `has` field or don't match the `missing` field can be used. Both the `source` and all `has` items must match and all `missing` items must not match for the redirect to be applied.
+
+`has` and `missing` items can have the following fields:
+
+- `type`: `String` - must be either `header`, `cookie`, `host`, or `query`.
+- `key`: `String` - the key from the selected type to match against.
+- `value`: `String` or `undefined` - the value to check for, if undefined any value will match. A regex like string can be used to capture a specific part of the value, e.g. if the value `first-(?<paramName>.*)` is used for `first-second` then `second` will be usable in the destination with `:paramName`.
+
+```js filename="next.config.js"
+module.exports = {
+  async redirects() {
+    return [
+      // if the header `x-redirect-me` is present,
+      // this redirect will be applied
+      {
+        source: '/:path((?!another-page$).*)',
+        has: [
+          {
+            type: 'header',
+            key: 'x-redirect-me',
+          },
+        ],
+        permanent: false,
+        destination: '/another-page',
+      },
+      // if the header `x-dont-redirect` is present,
+      // this redirect will NOT be applied
+      {
+        source: '/:path((?!another-page$).*)',
+        missing: [
+          {
+            type: 'header',
+            key: 'x-do-not-redirect',
+          },
+        ],
+        permanent: false,
+        destination: '/another-page',
+      },
+      // if the source, query, and cookie are matched,
+      // this redirect will be applied
+      {
+        source: '/specific/:path*',
+        has: [
+          {
+            type: 'query',
+            key: 'page',
+            // the page value will not be available in the
+            // destination since value is provided and doesn't
+            // use a named capture group e.g. (?<page>home)
+            value: 'home',
+          },
+          {
+            type: 'cookie',
+            key: 'authorized',
+            value: 'true',
+          },
+        ],
+        permanent: false,
+        destination: '/another/:path*',
+      },
+      // if the header `x-authorized` is present and
+      // contains a matching value, this redirect will be applied
+      {
+        source: '/',
+        has: [
+          {
+            type: 'header',
+            key: 'x-authorized',
+            value: '(?<authorized>yes|true)',
+          },
+        ],
+        permanent: false,
+        destination: '/home?authorized=:authorized',
+      },
+      // if the host is `example.com`,
+      // this redirect will be applied
+      {
+        source: '/:path((?!another-page$).*)',
+        has: [
+          {
+            type: 'host',
+            value: 'example.com',
+          },
+        ],
+        permanent: false,
+        destination: '/another-page',
+      },
+    ]
+  },
+}
+```
+
+### Redirects with basePath support
+
+When leveraging [`basePath` support](/docs/app/api-reference/next-config-js/basePath) with redirects each `source` and `destination` is automatically prefixed with the `basePath` unless you add `basePath: false` to the redirect:
+
+```js filename="next.config.js"
+module.exports = {
+  basePath: '/docs',
+
+  async redirects() {
+    return [
+      {
+        source: '/with-basePath', // automatically becomes /docs/with-basePath
+        destination: '/another', // automatically becomes /docs/another
+        permanent: false,
+      },
+      {
+        // does not add /docs since basePath: false is set
+        source: '/without-basePath',
+        destination: 'https://example.com',
+        basePath: false,
+        permanent: false,
+      },
+    ]
+  },
+}
+```
+
+### Redirects with i18n support
+
+<AppOnly>
+
+When leveraging [`i18n` support](/docs/app/building-your-application/routing/internationalization) with redirects each `source` and `destination` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the redirect. If `locale: false` is used you must prefix the `source` and `destination` with a locale for it to be matched correctly.
+
+</AppOnly>
+
+<PagesOnly>
+
+When leveraging [`i18n` support](/docs/pages/building-your-application/routing/internationalization) with redirects each `source` and `destination` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the redirect. If `locale: false` is used you must prefix the `source` and `destination` with a locale for it to be matched correctly.
+
+</PagesOnly>
+
+```js filename="next.config.js"
+module.exports = {
+  i18n: {
+    locales: ['en', 'fr', 'de'],
+    defaultLocale: 'en',
+  },
+
+  async redirects() {
+    return [
+      {
+        source: '/with-locale', // automatically handles all locales
+        destination: '/another', // automatically passes the locale on
+        permanent: false,
+      },
+      {
+        // does not handle locales automatically since locale: false is set
+        source: '/nl/with-locale-manual',
+        destination: '/nl/another',
+        locale: false,
+        permanent: false,
+      },
+      {
+        // this matches '/' since `en` is the defaultLocale
+        source: '/en',
+        destination: '/en/another',
+        locale: false,
+        permanent: false,
+      },
+      // it's possible to match all locales even when locale: false is set
+      {
+        source: '/:locale/page',
+        destination: '/en/newpage',
+        permanent: false,
+        locale: false,
+      },
+      {
+        // this gets converted to /(en|fr|de)/(.*) so will not match the top-level
+        // `/` or `/fr` routes like /:path* would
+        source: '/(.*)',
+        destination: '/another',
+        permanent: false,
+      },
+    ]
+  },
+}
+```
+
+In some rare cases, you might need to assign a custom status code for older HTTP Clients to properly redirect. In these cases, you can use the `statusCode` property instead of the `permanent` property, but not both. To to ensure IE11 compatibility, a `Refresh` header is automatically added for the 308 status code.
+
+## Other Redirects
+
+- Inside [API Routes](/docs/pages/api-reference/functions/next-server), you can use `res.redirect()`.
+- Inside [`getStaticProps`](/docs/pages/building-your-application/data-fetching/get-static-props) and [`getServerSideProps`](/docs/pages/building-your-application/data-fetching/get-server-side-props), you can redirect specific pages at request-time.
+
+## Version History
+
+| Version   | Changes            |
+| --------- | ------------------ |
+| `v13.3.0` | `missing` added.   |
+| `v10.2.0` | `has` added.       |
+| `v9.5.0`  | `redirects` added. |
+
+
+## rewrites
+
+
+---
+title: rewrites
+description: Add rewrites to your Next.js app.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Rewrites allow you to map an incoming request path to a different destination path.
+
+<AppOnly>
+
+Rewrites act as a URL proxy and mask the destination path, making it appear the user hasn't changed their location on the site. In contrast, [redirects](/docs/app/api-reference/next-config-js/redirects) will reroute to a new page and show the URL changes.
+
+</AppOnly>
+
+<PagesOnly>
+
+Rewrites act as a URL proxy and mask the destination path, making it appear the user hasn't changed their location on the site. In contrast, [redirects](/docs/pages/api-reference/next-config-js/redirects) will reroute to a new page and show the URL changes.
+
+</PagesOnly>
+
+To use rewrites you can use the `rewrites` key in `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/about',
+        destination: '/',
+      },
+    ]
+  },
+}
+```
+
+Rewrites are applied to client-side routing, a `<Link href="/about">` will have the rewrite applied in the above example.
+
+`rewrites` is an async function that expects to return either an array or an object of arrays (see below) holding objects with `source` and `destination` properties:
+
+- `source`: `String` - is the incoming request path pattern.
+- `destination`: `String` is the path you want to route to.
+- `basePath`: `false` or `undefined` - if false the basePath won't be included when matching, can be used for external rewrites only.
+- `locale`: `false` or `undefined` - whether the locale should not be included when matching.
+- `has` is an array of [has objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+- `missing` is an array of [missing objects](#header-cookie-and-query-matching) with the `type`, `key` and `value` properties.
+
+When the `rewrites` function returns an array, rewrites are applied after checking the filesystem (pages and `/public` files) and before dynamic routes. When the `rewrites` function returns an object of arrays with a specific shape, this behavior can be changed and more finely controlled, as of `v10.1` of Next.js:
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // These rewrites are checked after headers/redirects
+        // and before all files including _next/public files which
+        // allows overriding page files
+        {
+          source: '/some-page',
+          destination: '/somewhere-else',
+          has: [{ type: 'query', key: 'overrideMe' }],
+        },
+      ],
+      afterFiles: [
+        // These rewrites are checked after pages/public files
+        // are checked but before dynamic routes
+        {
+          source: '/non-existent',
+          destination: '/somewhere-else',
+        },
+      ],
+      fallback: [
+        // These rewrites are checked after both pages/public files
+        // and dynamic routes are checked
+        {
+          source: '/:path*',
+          destination: `https://my-old-site.com/:path*`,
+        },
+      ],
+    }
+  },
+}
+```
+
+> **Good to know**: rewrites in `beforeFiles` do not check the filesystem/dynamic routes immediately after matching a source, they continue until all `beforeFiles` have been checked.
+
+The order Next.js routes are checked is:
+
+<AppOnly>
+
+1. [headers](/docs/app/api-reference/next-config-js/headers) are checked/applied
+2. [redirects](/docs/app/api-reference/next-config-js/redirects) are checked/applied
+3. `beforeFiles` rewrites are checked/applied
+4. static files from the [public directory](/docs/app/building-your-application/optimizing/static-assets), `_next/static` files, and non-dynamic pages are checked/served
+5. `afterFiles` rewrites are checked/applied, if one of these rewrites is matched we check dynamic routes/static files after each match
+6. `fallback` rewrites are checked/applied, these are applied before rendering the 404 page and after dynamic routes/all static assets have been checked. If you use [fallback: true/'blocking'](/docs/pages/api-reference/functions/get-static-paths#fallback-true) in `getStaticPaths`, the fallback `rewrites` defined in your `next.config.js` will _not_ be run.
+
+</AppOnly>
+
+<PagesOnly>
+
+1. [headers](/docs/pages/api-reference/next-config-js/headers) are checked/applied
+2. [redirects](/docs/pages/api-reference/next-config-js/redirects) are checked/applied
+3. `beforeFiles` rewrites are checked/applied
+4. static files from the [public directory](/docs/pages/building-your-application/optimizing/static-assets), `_next/static` files, and non-dynamic pages are checked/served
+5. `afterFiles` rewrites are checked/applied, if one of these rewrites is matched we check dynamic routes/static files after each match
+6. `fallback` rewrites are checked/applied, these are applied before rendering the 404 page and after dynamic routes/all static assets have been checked. If you use [fallback: true/'blocking'](/docs/pages/api-reference/functions/get-static-paths#fallback-true) in `getStaticPaths`, the fallback `rewrites` defined in your `next.config.js` will _not_ be run.
+
+</PagesOnly>
+
+## Rewrite parameters
+
+When using parameters in a rewrite the parameters will be passed in the query by default when none of the parameters are used in the `destination`.
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/old-about/:path*',
+        destination: '/about', // The :path parameter isn't used here so will be automatically passed in the query
+      },
+    ]
+  },
+}
+```
+
+If a parameter is used in the destination none of the parameters will be automatically passed in the query.
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/docs/:path*',
+        destination: '/:path*', // The :path parameter is used here so will not be automatically passed in the query
+      },
+    ]
+  },
+}
+```
+
+You can still pass the parameters manually in the query if one is already used in the destination by specifying the query in the `destination`.
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/:first/:second',
+        destination: '/:first?second=:second',
+        // Since the :first parameter is used in the destination the :second parameter
+        // will not automatically be added in the query although we can manually add it
+        // as shown above
+      },
+    ]
+  },
+}
+```
+
+> **Good to know**: Static pages from [Automatic Static Optimization](/docs/pages/building-your-application/rendering/automatic-static-optimization) or [prerendering](/docs/pages/building-your-application/data-fetching/get-static-props) params from rewrites will be parsed on the client after hydration and provided in the query.
+
+## Path Matching
+
+Path matches are allowed, for example `/blog/:slug` will match `/blog/hello-world` (no nested paths):
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/blog/:slug',
+        destination: '/news/:slug', // Matched parameters can be used in the destination
+      },
+    ]
+  },
+}
+```
+
+### Wildcard Path Matching
+
+To match a wildcard path you can use `*` after a parameter, for example `/blog/:slug*` will match `/blog/a/b/c/d/hello-world`:
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/blog/:slug*',
+        destination: '/news/:slug*', // Matched parameters can be used in the destination
+      },
+    ]
+  },
+}
+```
+
+### Regex Path Matching
+
+To match a regex path you can wrap the regex in parenthesis after a parameter, for example `/blog/:slug(\\d{1,})` will match `/blog/123` but not `/blog/abc`:
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/old-blog/:post(\\d{1,})',
+        destination: '/blog/:post', // Matched parameters can be used in the destination
+      },
+    ]
+  },
+}
+```
+
+The following characters `(`, `)`, `{`, `}`, `:`, `*`, `+`, `?` are used for regex path matching, so when used in the `source` as non-special values they must be escaped by adding `\\` before them:
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        // this will match `/english(default)/something` being requested
+        source: '/english\\(default\\)/:slug',
+        destination: '/en-us/:slug',
+      },
+    ]
+  },
+}
+```
+
+## Header, Cookie, and Query Matching
+
+To only match a rewrite when header, cookie, or query values also match the `has` field or don't match the `missing` field can be used. Both the `source` and all `has` items must match and all `missing` items must not match for the rewrite to be applied.
+
+`has` and `missing` items can have the following fields:
+
+- `type`: `String` - must be either `header`, `cookie`, `host`, or `query`.
+- `key`: `String` - the key from the selected type to match against.
+- `value`: `String` or `undefined` - the value to check for, if undefined any value will match. A regex like string can be used to capture a specific part of the value, e.g. if the value `first-(?<paramName>.*)` is used for `first-second` then `second` will be usable in the destination with `:paramName`.
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      // if the header `x-rewrite-me` is present,
+      // this rewrite will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-rewrite-me',
+          },
+        ],
+        destination: '/another-page',
+      },
+      // if the header `x-rewrite-me` is not present,
+      // this rewrite will be applied
+      {
+        source: '/:path*',
+        missing: [
+          {
+            type: 'header',
+            key: 'x-rewrite-me',
+          },
+        ],
+        destination: '/another-page',
+      },
+      // if the source, query, and cookie are matched,
+      // this rewrite will be applied
+      {
+        source: '/specific/:path*',
+        has: [
+          {
+            type: 'query',
+            key: 'page',
+            // the page value will not be available in the
+            // destination since value is provided and doesn't
+            // use a named capture group e.g. (?<page>home)
+            value: 'home',
+          },
+          {
+            type: 'cookie',
+            key: 'authorized',
+            value: 'true',
+          },
+        ],
+        destination: '/:path*/home',
+      },
+      // if the header `x-authorized` is present and
+      // contains a matching value, this rewrite will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'x-authorized',
+            value: '(?<authorized>yes|true)',
+          },
+        ],
+        destination: '/home?authorized=:authorized',
+      },
+      // if the host is `example.com`,
+      // this rewrite will be applied
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'example.com',
+          },
+        ],
+        destination: '/another-page',
+      },
+    ]
+  },
+}
+```
+
+## Rewriting to an external URL
+
+<details>
+  <summary>Examples</summary>
+
+- [Incremental adoption of Next.js](https://github.com/vercel/next.js/tree/canary/examples/custom-routes-proxying)
+- [Using Multiple Zones](https://github.com/vercel/next.js/tree/canary/examples/with-zones)
+
+</details>
+
+Rewrites allow you to rewrite to an external url. This is especially useful for incrementally adopting Next.js. The following is an example rewrite for redirecting the `/blog` route of your main app to an external site.
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/blog',
+        destination: 'https://example.com/blog',
+      },
+      {
+        source: '/blog/:slug',
+        destination: 'https://example.com/blog/:slug', // Matched parameters can be used in the destination
+      },
+    ]
+  },
+}
+```
+
+If you're using `trailingSlash: true`, you also need to insert a trailing slash in the `source` parameter. If the destination server is also expecting a trailing slash it should be included in the `destination` parameter as well.
+
+```js filename="next.config.js"
+module.exports = {
+  trailingSlash: true,
+  async rewrites() {
+    return [
+      {
+        source: '/blog/',
+        destination: 'https://example.com/blog/',
+      },
+      {
+        source: '/blog/:path*/',
+        destination: 'https://example.com/blog/:path*/',
+      },
+    ]
+  },
+}
+```
+
+### Incremental adoption of Next.js
+
+You can also have Next.js fall back to proxying to an existing website after checking all Next.js routes.
+
+This way you don't have to change the rewrites configuration when migrating more pages to Next.js
+
+```js filename="next.config.js"
+module.exports = {
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source: '/:path*',
+          destination: `https://custom-routes-proxying-endpoint.vercel.app/:path*`,
+        },
+      ],
+    }
+  },
+}
+```
+
+### Rewrites with basePath support
+
+When leveraging [`basePath` support](/docs/app/api-reference/next-config-js/basePath) with rewrites each `source` and `destination` is automatically prefixed with the `basePath` unless you add `basePath: false` to the rewrite:
+
+```js filename="next.config.js"
+module.exports = {
+  basePath: '/docs',
+
+  async rewrites() {
+    return [
+      {
+        source: '/with-basePath', // automatically becomes /docs/with-basePath
+        destination: '/another', // automatically becomes /docs/another
+      },
+      {
+        // does not add /docs to /without-basePath since basePath: false is set
+        // Note: this can not be used for internal rewrites e.g. `destination: '/another'`
+        source: '/without-basePath',
+        destination: 'https://example.com',
+        basePath: false,
+      },
+    ]
+  },
+}
+```
+
+### Rewrites with i18n support
+
+<AppOnly>
+
+When leveraging [`i18n` support](/docs/app/building-your-application/routing/internationalization) with rewrites each `source` and `destination` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the rewrite. If `locale: false` is used you must prefix the `source` and `destination` with a locale for it to be matched correctly.
+
+</AppOnly>
+
+<PagesOnly>
+
+When leveraging [`i18n` support](/docs/pages/building-your-application/routing/internationalization) with rewrites each `source` and `destination` is automatically prefixed to handle the configured `locales` unless you add `locale: false` to the rewrite. If `locale: false` is used you must prefix the `source` and `destination` with a locale for it to be matched correctly.
+
+</PagesOnly>
+
+```js filename="next.config.js"
+module.exports = {
+  i18n: {
+    locales: ['en', 'fr', 'de'],
+    defaultLocale: 'en',
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: '/with-locale', // automatically handles all locales
+        destination: '/another', // automatically passes the locale on
+      },
+      {
+        // does not handle locales automatically since locale: false is set
+        source: '/nl/with-locale-manual',
+        destination: '/nl/another',
+        locale: false,
+      },
+      {
+        // this matches '/' since `en` is the defaultLocale
+        source: '/en',
+        destination: '/en/another',
+        locale: false,
+      },
+      {
+        // it's possible to match all locales even when locale: false is set
+        source: '/:locale/api-alias/:path*',
+        destination: '/api/:path*',
+        locale: false,
+      },
+      {
+        // this gets converted to /(en|fr|de)/(.*) so will not match the top-level
+        // `/` or `/fr` routes like /:path* would
+        source: '/(.*)',
+        destination: '/another',
+      },
+    ]
+  },
+}
+```
+
+## Version History
+
+| Version   | Changes          |
+| --------- | ---------------- |
+| `v13.3.0` | `missing` added. |
+| `v10.2.0` | `has` added.     |
+| `v9.5.0`  | Headers added.   |
+
+
+## serverComponentsExternalPackages
+
+
+---
+title: serverComponentsExternalPackages
+description: Opt-out specific dependencies from the Server Components bundling and use native Node.js `require`.
+---
+
+Dependencies used inside [Server Components](/docs/app/building-your-application/rendering/server-components) and [Route Handlers](/docs/app/building-your-application/routing/route-handlers) will automatically be bundled by Next.js.
+
+If a dependency is using Node.js specific features, you can choose to opt-out specific dependencies from the Server Components bundling and use native Node.js `require`.
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['@acme/ui'],
+  },
+}
+
+module.exports = nextConfig
+```
+
+Next.js includes a [short list of popular packages](https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/server-external-packages.json) that currently are working on compatibility and automatically opt-ed out:
+
+- `@aws-sdk/client-s3`
+- `@aws-sdk/s3-presigned-post`
+- `@blockfrost/blockfrost-js`
+- `@libsql/client`
+- `@jpg-store/lucid-cardano`
+- `@mikro-orm/core`
+- `@mikro-orm/knex`
+- `@prisma/client`
+- `@sentry/nextjs`
+- `@sentry/node`
+- `@swc/core`
+- `argon2`
+- `autoprefixer`
+- `aws-crt`
+- `bcrypt`
+- `better-sqlite3`
+- `canvas`
+- `cpu-features`
+- `cypress`
+- `eslint`
+- `express`
+- `firebase-admin`
+- `jest`
+- `jsdom`
+- `libsql`
+- `lodash`
+- `mdx-bundler`
+- `mongodb`
+- `mongoose`
+- `next-mdx-remote`
+- `next-seo`
+- `payload`
+- `pg`
+- `playwright`
+- `postcss`
+- `prettier`
+- `prisma`
+- `puppeteer`
+- `rimraf`
+- `sharp`
+- `shiki`
+- `sqlite3`
+- `tailwindcss`
+- `ts-node`
+- `typescript`
+- `vscode-oniguruma`
+- `webpack`
+
+
+## trailingSlash
+
+
+---
+title: trailingSlash
+description: Configure Next.js pages to resolve with or without a trailing slash.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+By default Next.js will redirect urls with trailing slashes to their counterpart without a trailing slash. For example `/about/` will redirect to `/about`. You can configure this behavior to act the opposite way, where urls without trailing slashes are redirected to their counterparts with trailing slashes.
+
+Open `next.config.js` and add the `trailingSlash` config:
+
+```js filename="next.config.js"
+module.exports = {
+  trailingSlash: true,
+}
+```
+
+With this option set, urls like `/about` will redirect to `/about/`.
+
+## Version History
+
+| Version  | Changes                |
+| -------- | ---------------------- |
+| `v9.5.0` | `trailingSlash` added. |
+
+
+## transpilePackages
+
+
+---
+title: transpilePackages
+description: Automatically transpile and bundle dependencies from local packages (like monorepos) or from external dependencies (`node_modules`).
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js can automatically transpile and bundle dependencies from local packages (like monorepos) or from external dependencies (`node_modules`). This replaces the `next-transpile-modules` package.
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  transpilePackages: ['@acme/ui', 'lodash-es'],
+}
+
+module.exports = nextConfig
+```
+
+## Version History
+
+| Version   | Changes                    |
+| --------- | -------------------------- |
+| `v13.0.0` | `transpilePackages` added. |
+
+
+## turbo
+
+
+---
+title: turbo (Experimental)
+nav_title: turbo
+description: Configure Next.js with Turbopack-specific options
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+> **Warning**: These features are experimental and will only work with `next --turbo`.
+
+## webpack loaders
+
+Currently, Turbopack supports a subset of webpack's loader API, allowing you to use some webpack loaders to transform code in Turbopack.
+
+To configure loaders, add the names of the loaders you've installed and any options in `next.config.js`, mapping file extensions to a list of loaders:
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    turbo: {
+      rules: {
+        // Option format
+        '*.md': [
+          {
+            loader: '@mdx-js/loader',
+            options: {
+              format: 'md',
+            },
+          },
+        ],
+        // Option-less format
+        '*.mdx': ['@mdx-js/loader'],
+      },
+    },
+  },
+}
+```
+
+Then, given the above configuration, you can use transformed code from your app:
+
+```js
+import MyDoc from './my-doc.mdx'
+
+export default function Home() {
+  return <MyDoc />
+}
+```
+
+## Resolve Alias
+
+Through `next.config.js`, Turbopack can be configured to modify module resolution through aliases, similar to webpack's [`resolve.alias`](https://webpack.js.org/configuration/resolve/#resolvealias) configuration.
+
+To configure resolve aliases, map imported patterns to their new destination in `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        underscore: 'lodash',
+        mocha: { browser: 'mocha/browser-entry.js' },
+      },
+    },
+  },
+}
+```
+
+This aliases imports of the `underscore` package to the `lodash` package. In other words, `import underscore from 'underscore'` will load the `lodash` module instead of `underscore`.
+
+Turbopack also supports conditional aliasing through this field, similar to Node.js's [conditional exports](https://nodejs.org/docs/latest-v18.x/api/packages.html#conditional-exports). At the moment only the `browser` condition is supported. In the case above, imports of the `mocha` module will be aliased to `mocha/browser-entry.js` when Turbopack targets browser environments.
+
+For more information and guidance for how to migrate your app to Turbopack from webpack, see [Turbopack's documentation on webpack compatibility](https://turbo.build/pack/docs/migrating-from-webpack).
+
+
+## typedRoutes
+
+
+---
+title: typedRoutes (experimental)
+nav_title: typedRoutes
+description: Enable experimental support for statically typed links.
+---
+
+Experimental support for [statically typed links](/docs/app/building-your-application/configuring/typescript#statically-typed-links). This feature requires using the App Router as well as TypeScript in your project.
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    typedRoutes: true,
+  },
+}
+
+module.exports = nextConfig
+```
+
+
+## typescript
+
+
+---
+title: typescript
+description: Next.js reports TypeScript errors by default. Learn to opt-out of this behavior here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js fails your **production build** (`next build`) when TypeScript errors are present in your project.
+
+If you'd like Next.js to dangerously produce production code even when your application has errors, you can disable the built-in type checking step.
+
+If disabled, be sure you are running type checks as part of your build or deploy process, otherwise this can be very dangerous.
+
+Open `next.config.js` and enable the `ignoreBuildErrors` option in the `typescript` config:
+
+```js filename="next.config.js"
+module.exports = {
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
+  },
+}
+```
+
+
+## urlImports
+
+
+---
+title: urlImports
+description: Configure Next.js to allow importing modules from external URLs (experimental).
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+URL imports are an experimental feature that allows you to import modules directly from external servers (instead of from the local disk).
+
+> **Warning**: This feature is experimental. Only use domains that you trust to download and execute on your machine. Please exercise
+> discretion, and caution until the feature is flagged as stable.
+
+To opt-in, add the allowed URL prefixes inside `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    urlImports: ['https://example.com/assets/', 'https://cdn.skypack.dev'],
+  },
+}
+```
+
+Then, you can import modules directly from URLs:
+
+```js
+import { a, b, c } from 'https://example.com/assets/some/module.js'
+```
+
+URL Imports can be used everywhere normal package imports can be used.
+
+## Security Model
+
+This feature is being designed with **security as the top priority**. To start, we added an experimental flag forcing you to explicitly allow the domains you accept URL imports from. We're working to take this further by limiting URL imports to execute in the browser sandbox using the [Edge Runtime](/docs/app/api-reference/edge).
+
+## Lockfile
+
+When using URL imports, Next.js will create a `next.lock` directory containing a lockfile and fetched assets.
+This directory **must be committed to Git**, not ignored by `.gitignore`.
+
+- When running `next dev`, Next.js will download and add all newly discovered URL Imports to your lockfile
+- When running `next build`, Next.js will use only the lockfile to build the application for production
+
+Typically, no network requests are needed and any outdated lockfile will cause the build to fail.
+One exception is resources that respond with `Cache-Control: no-cache`.
+These resources will have a `no-cache` entry in the lockfile and will always be fetched from the network on each build.
+
+## Examples
+
+### Skypack
+
+```js
+import confetti from 'https://cdn.skypack.dev/canvas-confetti'
+import { useEffect } from 'react'
+
+export default () => {
+  useEffect(() => {
+    confetti()
+  })
+  return <p>Hello</p>
+}
+```
+
+### Static Image Imports
+
+```js
+import Image from 'next/image'
+import logo from 'https://example.com/assets/logo.png'
+
+export default () => (
+  <div>
+    <Image src={logo} placeholder="blur" />
+  </div>
+)
+```
+
+### URLs in CSS
+
+```css
+.className {
+  background: url('https://example.com/assets/hero.jpg');
+}
+```
+
+### Asset Imports
+
+```js
+const logo = new URL('https://example.com/assets/file.txt', import.meta.url)
+
+console.log(logo.pathname)
+
+// prints "/_next/static/media/file.a9727b5d.txt"
+```
+
+
+## webVitalsAttribution
+
+
+---
+title: webVitalsAttribution
+description: Learn how to use the webVitalsAttribution option to pinpoint the source of Web Vitals issues.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+When debugging issues related to Web Vitals, it is often helpful if we can pinpoint the source of the problem.
+For example, in the case of Cumulative Layout Shift (CLS), we might want to know the first element that shifted when the single largest layout shift occurred.
+Or, in the case of Largest Contentful Paint (LCP), we might want to identify the element corresponding to the LCP for the page.
+If the LCP element is an image, knowing the URL of the image resource can help us locate the asset we need to optimize.
+
+Pinpointing the biggest contributor to the Web Vitals score, aka [attribution](https://github.com/GoogleChrome/web-vitals/blob/4ca38ae64b8d1e899028c692f94d4c56acfc996c/README.md#attribution),
+allows us to obtain more in-depth information like entries for [PerformanceEventTiming](https://developer.mozilla.org/docs/Web/API/PerformanceEventTiming), [PerformanceNavigationTiming](https://developer.mozilla.org/docs/Web/API/PerformanceNavigationTiming) and [PerformanceResourceTiming](https://developer.mozilla.org/docs/Web/API/PerformanceResourceTiming).
+
+Attribution is disabled by default in Next.js but can be enabled **per metric** by specifying the following in `next.config.js`.
+
+```js filename="next.config.js"
+experimental: {
+  webVitalsAttribution: ['CLS', 'LCP']
+}
+```
+
+Valid attribution values are all `web-vitals` metrics specified in the [`NextWebVitalsMetric`](https://github.com/vercel/next.js/blob/442378d21dd56d6e769863eb8c2cb521a463a2e0/packages/next/shared/lib/utils.ts#L43) type.
+
+
+## webpack
+
+
+---
+title: Custom Webpack Config
+nav_title: webpack
+description: Learn how to customize the webpack config used by Next.js
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+> **Good to know**: changes to webpack config are not covered by semver so proceed at your own risk
+
+Before continuing to add custom webpack configuration to your application make sure Next.js doesn't already support your use-case:
+
+<AppOnly>
+
+- [CSS imports](/docs/app/building-your-application/styling)
+- [CSS modules](/docs/app/building-your-application/styling/css-modules)
+- [Sass/SCSS imports](/docs/app/building-your-application/styling/sass)
+- [Sass/SCSS modules](/docs/app/building-your-application/styling/sass)
+- [preact](https://github.com/vercel/next.js/tree/canary/examples/using-preact)
+
+</AppOnly>
+
+<PagesOnly>
+
+- [CSS imports](/docs/pages/building-your-application/styling)
+- [CSS modules](/docs/pages/building-your-application/styling/css-modules)
+- [Sass/SCSS imports](/docs/pages/building-your-application/styling/sass)
+- [Sass/SCSS modules](/docs/pages/building-your-application/styling/sass)
+- [preact](https://github.com/vercel/next.js/tree/canary/examples/using-preact)
+- [Customizing babel configuration](/docs/pages/building-your-application/configuring/babel)
+
+</PagesOnly>
+
+Some commonly asked for features are available as plugins:
+
+- [@next/mdx](https://github.com/vercel/next.js/tree/canary/packages/next-mdx)
+- [@next/bundle-analyzer](https://github.com/vercel/next.js/tree/canary/packages/next-bundle-analyzer)
+
+In order to extend our usage of `webpack`, you can define a function that extends its config inside `next.config.js`, like so:
+
+```js filename="next.config.js"
+module.exports = {
+  webpack: (
+    config,
+    { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }
+  ) => {
+    // Important: return the modified config
+    return config
+  },
+}
+```
+
+> The `webpack` function is executed twice, once for the server and once for the client. This allows you to distinguish between client and server configuration using the `isServer` property.
+
+The second argument to the `webpack` function is an object with the following properties:
+
+- `buildId`: `String` - The build id, used as a unique identifier between builds
+- `dev`: `Boolean` - Indicates if the compilation will be done in development
+- `isServer`: `Boolean` - It's `true` for server-side compilation, and `false` for client-side compilation
+- `nextRuntime`: `String | undefined` - The target runtime for server-side compilation; either `"edge"` or `"nodejs"`, it's `undefined` for client-side compilation.
+- `defaultLoaders`: `Object` - Default loaders used internally by Next.js:
+  - `babel`: `Object` - Default `babel-loader` configuration
+
+Example usage of `defaultLoaders.babel`:
+
+```js
+// Example config for adding a loader that depends on babel-loader
+// This source was taken from the @next/mdx plugin source:
+// https://github.com/vercel/next.js/tree/canary/packages/next-mdx
+module.exports = {
+  webpack: (config, options) => {
+    config.module.rules.push({
+      test: /\.mdx/,
+      use: [
+        options.defaultLoaders.babel,
+        {
+          loader: '@mdx-js/loader',
+          options: pluginOptions.options,
+        },
+      ],
+    })
+
+    return config
+  },
+}
+```
+
+#### `nextRuntime`
+
+Notice that `isServer` is `true` when `nextRuntime` is `"edge"` or `"nodejs"`, nextRuntime "`edge`" is currently for middleware and Server Components in edge runtime only.

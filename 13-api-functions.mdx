@@ -1,0 +1,4411 @@
+# API Functions
+
+
+## cookies
+
+
+---
+title: cookies
+description: API Reference for the cookies function.
+related:
+  title: Next Steps
+  description: For more information on what to do next, we recommend the following sections
+  links:
+    - app/building-your-application/data-fetching/forms-and-mutations
+---
+
+The `cookies` function allows you to read the HTTP incoming request cookies from a [Server Component](/docs/app/building-your-application/rendering/server-components) or write outgoing request cookies in a [Server Action](/docs/app/building-your-application/data-fetching/forms-and-mutations) or [Route Handler](/docs/app/building-your-application/routing/route-handlers).
+
+> **Good to know**: `cookies()` is a **[Dynamic Function](/docs/app/building-your-application/rendering/server-components#server-rendering-strategies#dynamic-functions)** whose returned values cannot be known ahead of time. Using it in a layout or page will opt a route into **[dynamic rendering](/docs/app/building-your-application/rendering/server-components#dynamic-rendering)** at request time.
+
+## `cookies().get(name)`
+
+A method that takes a cookie name and returns an object with name and value. If a cookie with `name` isn't found, it returns `undefined`. If multiple cookies match, it will only return the first match.
+
+```jsx filename="app/page.js"
+import { cookies } from 'next/headers'
+
+export default function Page() {
+  const cookieStore = cookies()
+  const theme = cookieStore.get('theme')
+  return '...'
+}
+```
+
+## `cookies().getAll()`
+
+A method that is similar to `get`, but returns a list of all the cookies with a matching `name`. If `name` is unspecified, it returns all the available cookies.
+
+```jsx filename="app/page.js"
+import { cookies } from 'next/headers'
+
+export default function Page() {
+  const cookieStore = cookies()
+  return cookieStore.getAll().map((cookie) => (
+    <div key={cookie.name}>
+      <p>Name: {cookie.name}</p>
+      <p>Value: {cookie.value}</p>
+    </div>
+  ))
+}
+```
+
+## `cookies().has(name)`
+
+A method that takes a cookie name and returns a `boolean` based on if the cookie exists (`true`) or not (`false`).
+
+```jsx filename="app/page.js"
+import { cookies } from 'next/headers'
+
+export default function Page() {
+  const cookiesList = cookies()
+  const hasCookie = cookiesList.has('theme')
+  return '...'
+}
+```
+
+## `cookies().set(name, value, options)`
+
+A method that takes a cookie name, value, and options and sets the outgoing request cookie.
+
+> **Good to know**: HTTP does not allow setting cookies after streaming starts, so you must use `.set()` in a [Server Action](/docs/app/building-your-application/data-fetching/forms-and-mutations) or [Route Handler](/docs/app/building-your-application/routing/route-handlers).
+
+```js filename="app/actions.js"
+'use server'
+
+import { cookies } from 'next/headers'
+
+async function create(data) {
+  cookies().set('name', 'lee')
+  // or
+  cookies().set('name', 'lee', { secure: true })
+  // or
+  cookies().set({
+    name: 'name',
+    value: 'lee',
+    httpOnly: true,
+    path: '/',
+  })
+}
+```
+
+## Deleting cookies
+
+> **Good to know**: You can only delete cookies in a [Server Action](/docs/app/building-your-application/data-fetching/forms-and-mutations) or [Route Handler](/docs/app/building-your-application/routing/route-handlers).
+
+There are several options for deleting a cookie:
+
+### `cookies().delete(name)`
+
+You can explicitly delete a cookie with a given name.
+
+```js filename="app/actions.js"
+'use server'
+
+import { cookies } from 'next/headers'
+
+async function create(data) {
+  cookies().delete('name')
+}
+```
+
+### `cookies().set(name, '')`
+
+Alternatively, you can set a new cookie with the same name and an empty value.
+
+```js filename="app/actions.js"
+'use server'
+
+import { cookies } from 'next/headers'
+
+async function create(data) {
+  cookies().set('name', '')
+}
+```
+
+> **Good to know**: `.set()` is only available in a [Server Action](/docs/app/building-your-application/data-fetching/forms-and-mutations) or [Route Handler](/docs/app/building-your-application/routing/route-handlers).
+
+### `cookies().set(name, value, { maxAge: 0 })`
+
+Setting `maxAge` to 0 will immediately expire a cookie.
+
+```js filename="app/actions.js"
+'use server'
+
+import { cookies } from 'next/headers'
+
+async function create(data) {
+  cookies().set('name', 'value', { maxAge: 0 })
+}
+```
+
+### `cookies().set(name, value, { expires: timestamp })`
+
+Setting `expires` to any value in the past will immediately expire a cookie.
+
+```js filename="app/actions.js"
+'use server'
+
+import { cookies } from 'next/headers'
+
+async function create(data) {
+  const oneDay = 24 * 60 * 60 * 1000
+  cookies().set('name', 'value', { expires: Date.now() - oneDay })
+}
+```
+
+> **Good to know**: You can only delete cookies that belong to the same domain from which `.set()` is called. Additionally, the code must be executed on the same protocol (HTTP or HTTPS) as the cookie you want to delete.
+
+## Version History
+
+| Version   | Changes               |
+| --------- | --------------------- |
+| `v13.0.0` | `cookies` introduced. |
+
+
+## draft-mode
+
+
+---
+title: draftMode
+description: API Reference for the draftMode function.
+---
+
+The `draftMode` function allows you to detect [Draft Mode](/docs/app/building-your-application/configuring/draft-mode) inside a [Server Component](/docs/app/building-your-application/rendering/server-components).
+
+```jsx filename="app/page.js"
+import { draftMode } from 'next/headers'
+
+export default function Page() {
+  const { isEnabled } = draftMode()
+  return (
+    <main>
+      <h1>My Blog Post</h1>
+      <p>Draft Mode is currently {isEnabled ? 'Enabled' : 'Disabled'}</p>
+    </main>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                 |
+| --------- | ----------------------- |
+| `v13.4.0` | `draftMode` introduced. |
+
+
+## fetch
+
+
+---
+title: fetch
+description: API reference for the extended fetch function.
+---
+
+Next.js extends the native [Web `fetch()` API](https://developer.mozilla.org/docs/Web/API/Fetch_API) to allow each request on the server to set its own persistent caching semantics.
+
+In the browser, the `cache` option indicates how a fetch request will interact with the _browser's_ HTTP cache. With this extension, `cache` indicates how a _server-side_ fetch request will interact with the framework's persistent HTTP cache.
+
+You can call `fetch` with `async` and `await` directly within Server Components.
+
+```tsx filename="app/page.tsx" switcher
+export default async function Page() {
+  // This request should be cached until manually invalidated.
+  // Similar to `getStaticProps`.
+  // `force-cache` is the default and can be omitted.
+  const staticData = await fetch(`https://...`, { cache: 'force-cache' })
+
+  // This request should be refetched on every request.
+  // Similar to `getServerSideProps`.
+  const dynamicData = await fetch(`https://...`, { cache: 'no-store' })
+
+  // This request should be cached with a lifetime of 10 seconds.
+  // Similar to `getStaticProps` with the `revalidate` option.
+  const revalidatedData = await fetch(`https://...`, {
+    next: { revalidate: 10 },
+  })
+
+  return <div>...</div>
+}
+```
+
+```jsx filename="app/page.js" switcher
+export default async function Page() {
+  // This request should be cached until manually invalidated.
+  // Similar to `getStaticProps`.
+  // `force-cache` is the default and can be omitted.
+  const staticData = await fetch(`https://...`, { cache: 'force-cache' })
+
+  // This request should be refetched on every request.
+  // Similar to `getServerSideProps`.
+  const dynamicData = await fetch(`https://...`, { cache: 'no-store' })
+
+  // This request should be cached with a lifetime of 10 seconds.
+  // Similar to `getStaticProps` with the `revalidate` option.
+  const revalidatedData = await fetch(`https://...`, {
+    next: { revalidate: 10 },
+  })
+
+  return <div>...</div>
+}
+```
+
+## `fetch(url, options)`
+
+Since Next.js extends the [Web `fetch()` API](https://developer.mozilla.org/docs/Web/API/Fetch_API), you can use any of the [native options available](https://developer.mozilla.org/docs/Web/API/fetch#parameters).
+
+### `options.cache`
+
+Configure how the request should interact with Next.js [Data Cache](/docs/app/building-your-application/caching#data-cache).
+
+```ts
+fetch(`https://...`, { cache: 'force-cache' | 'no-store' })
+```
+
+- **`force-cache`** (default) - Next.js looks for a matching request in its Data Cache.
+  - If there is a match and it is fresh, it will be returned from the cache.
+  - If there is no match or a stale match, Next.js will fetch the resource from the remote server and update the cache with the downloaded resource.
+- **`no-store`** - Next.js fetches the resource from the remote server on every request without looking in the cache, and it will not update the cache with the downloaded resource.
+
+> **Good to know**:
+>
+> - If you don't provide a `cache` option, Next.js will default to `force-cache`, unless a [dynamic function](/docs/app/building-your-application/rendering/server-components#server-rendering-strategies#dynamic-functions) such as `cookies()` is used, in which case it will default to `no-store`.
+> - The `no-cache` option behaves the same way as `no-store` in Next.js.
+
+### `options.next.revalidate`
+
+```ts
+fetch(`https://...`, { next: { revalidate: false | 0 | number } })
+```
+
+Set the cache lifetime of a resource (in seconds).
+
+- **`false`** - Cache the resource indefinitely. Semantically equivalent to `revalidate: Infinity`. The HTTP cache may evict older resources over time.
+- **`0`** - Prevent the resource from being cached.
+- **`number`** - (in seconds) Specify the resource should have a cache lifetime of at most `n` seconds.
+
+> **Good to know**:
+>
+> - If an individual `fetch()` request sets a `revalidate` number lower than the [default `revalidate`](/docs/app/api-reference/file-conventions/route-segment-config#revalidate) of a route, the whole route revalidation interval will be decreased.
+> - If two fetch requests with the same URL in the same route have different `revalidate` values, the lower value will be used.
+> - As a convenience, it is not necessary to set the `cache` option if `revalidate` is set to a number since `0` implies `cache: 'no-store'` and a positive value implies `cache: 'force-cache'`.
+> - Conflicting options such as `{ revalidate: 0, cache: 'force-cache' }` or `{ revalidate: 10, cache: 'no-store' }` will cause an error.
+
+### `options.next.tags`
+
+```ts
+fetch(`https://...`, { next: { tags: ['collection'] } })
+```
+
+Set the cache tags of a resource. Data can then be revalidated on-demand using [`revalidateTag`](https://nextjs.org/docs/app/api-reference/functions/revalidateTag). The max length for a custom tag is 256 characters.
+
+## Version History
+
+| Version   | Changes             |
+| --------- | ------------------- |
+| `v13.0.0` | `fetch` introduced. |
+
+
+## generate-image-metadata
+
+
+---
+title: generateImageMetadata
+description: Learn how to generate multiple images in a single Metadata API special file.
+related:
+  title: Next Steps
+  description: View all the Metadata API options.
+  links:
+    - app/api-reference/file-conventions/metadata
+    - app/building-your-application/optimizing/metadata
+---
+
+You can use `generateImageMetadata` to generate different versions of one image or return multiple images for one route segment. This is useful for when you want to avoid hard-coding metadata values, such as for icons.
+
+## Parameters
+
+`generateImageMetadata` function accepts the following parameters:
+
+#### `params` (optional)
+
+An object containing the [dynamic route parameters](/docs/app/building-your-application/routing/dynamic-routes) object from the root segment down to the segment `generateImageMetadata` is called from.
+
+```tsx filename="icon.tsx" switcher
+export function generateImageMetadata({
+  params,
+}: {
+  params: { slug: string }
+}) {
+  // ...
+}
+```
+
+```jsx filename="icon.js" switcher
+export function generateImageMetadata({ params }) {
+  // ...
+}
+```
+
+| Route                           | URL         | `params`                  |
+| ------------------------------- | ----------- | ------------------------- |
+| `app/shop/icon.js`              | `/shop`     | `undefined`               |
+| `app/shop/[slug]/icon.js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `app/shop/[tag]/[item]/icon.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `app/shop/[...slug]/icon.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+## Returns
+
+The `generateImageMetadata` function should return an `array` of objects containing the image's metadata such as `alt` and `size`. In addition, each item **must** include an `id` value will be passed to the props of the image generating function.
+
+| Image Metadata Object | Type                                |
+| --------------------- | ----------------------------------- |
+| `id`                  | `string` (required)                 |
+| `alt`                 | `string`                            |
+| `size`                | `{ width: number; height: number }` |
+| `contentType`         | `string`                            |
+
+```tsx filename="icon.tsx" switcher
+import { ImageResponse } from 'next/og'
+
+export function generateImageMetadata() {
+  return [
+    {
+      contentType: 'image/png',
+      size: { width: 48, height: 48 },
+      id: 'small',
+    },
+    {
+      contentType: 'image/png',
+      size: { width: 72, height: 72 },
+      id: 'medium',
+    },
+  ]
+}
+
+export default function Icon({ id }: { id: string }) {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 88,
+          background: '#000',
+          color: '#fafafa',
+        }}
+      >
+        Icon {id}
+      </div>
+    )
+  )
+}
+```
+
+```jsx filename="icon.js" switcher
+import { ImageResponse } from 'next/og'
+
+export function generateImageMetadata() {
+  return [
+    {
+      contentType: 'image/png',
+      size: { width: 48, height: 48 },
+      id: 'small',
+    },
+    {
+      contentType: 'image/png',
+      size: { width: 72, height: 72 },
+      id: 'medium',
+    },
+  ]
+}
+
+export default function Icon({ id }) {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 88,
+          background: '#000',
+          color: '#fafafa',
+        }}
+      >
+        Icon {id}
+      </div>
+    )
+  )
+}
+```
+
+### Examples
+
+#### Using external data
+
+This example uses the `params` object and external data to generate multiple [Open Graph images](/docs/app/api-reference/file-conventions/metadata/opengraph-image) for a route segment.
+
+```tsx filename="app/products/[id]/opengraph-image.tsx" switcher
+import { ImageResponse } from 'next/og'
+import { getCaptionForImage, getOGImages } from '@/app/utils/images'
+
+export async function generateImageMetadata({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const images = await getOGImages(params.id)
+
+  return images.map((image, idx) => ({
+    id: idx,
+    size: { width: 1200, height: 600 },
+    alt: image.text,
+    contentType: 'image/png',
+  }))
+}
+
+export default async function Image({
+  params,
+  id,
+}: {
+  params: { id: string }
+  id: number
+}) {
+  const productId = params.id
+  const imageId = id
+  const text = await getCaptionForImage(productId, imageId)
+
+  return new ImageResponse(
+    (
+      <div
+        style={
+          {
+            // ...
+          }
+        }
+      >
+        {text}
+      </div>
+    )
+  )
+}
+```
+
+```jsx filename="app/products/[id]/opengraph-image.js" switcher
+import { ImageResponse } from 'next/og'
+import { getCaptionForImage, getOGImages } from '@/app/utils/images'
+
+export async function generateImageMetadata({ params }) {
+  const images = await getOGImages(params.id)
+
+  return images.map((image, idx) => ({
+    id: idx,
+    size: { width: 1200, height: 600 },
+    alt: image.text,
+    contentType: 'image/png',
+  }))
+}
+
+export default async function Image({ params, id }) {
+  const productId = params.id
+  const imageId = id
+  const text = await getCaptionForImage(productId, imageId)
+
+  return new ImageResponse(
+    (
+      <div
+        style={
+          {
+            // ...
+          }
+        }
+      >
+        {text}
+      </div>
+    )
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                             |
+| --------- | ----------------------------------- |
+| `v13.3.0` | `generateImageMetadata` introduced. |
+
+
+## generate-metadata
+
+
+---
+title: Metadata Object and generateMetadata Options
+nav_title: generateMetadata
+description: Learn how to add Metadata to your Next.js application for improved search engine optimization (SEO) and web shareability.
+related:
+  title: Next Steps
+  description: View all the Metadata API options.
+  links:
+    - app/api-reference/file-conventions/metadata
+    - app/api-reference/functions/generate-viewport
+    - app/building-your-application/optimizing/metadata
+---
+
+This page covers all **Config-based Metadata** options with `generateMetadata` and the static metadata object.
+
+```tsx filename="layout.tsx | page.tsx" switcher
+import { Metadata } from 'next'
+
+// either Static metadata
+export const metadata: Metadata = {
+  title: '...',
+}
+
+// or Dynamic metadata
+export async function generateMetadata({ params }) {
+  return {
+    title: '...',
+  }
+}
+```
+
+```jsx filename="layout.js | page.js" switcher
+// either Static metadata
+export const metadata = {
+  title: '...',
+}
+
+// or Dynamic metadata
+export async function generateMetadata({ params }) {
+  return {
+    title: '...',
+  }
+}
+```
+
+> **Good to know**:
+>
+> - The `metadata` object and `generateMetadata` function exports are **only supported in Server Components**.
+> - You cannot export both the `metadata` object and `generateMetadata` function from the same route segment.
+
+## The `metadata` object
+
+To define static metadata, export a [`Metadata` object](#metadata-fields) from a `layout.js` or `page.js` file.
+
+```tsx filename="layout.tsx | page.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: '...',
+  description: '...',
+}
+
+export default function Page() {}
+```
+
+```jsx filename="layout.js | page.js" switcher
+export const metadata = {
+  title: '...',
+  description: '...',
+}
+
+export default function Page() {}
+```
+
+See the [Metadata Fields](#metadata-fields) for a complete list of supported options.
+
+## `generateMetadata` function
+
+Dynamic metadata depends on **dynamic information**, such as the current route parameters, external data, or `metadata` in parent segments, can be set by exporting a `generateMetadata` function that returns a [`Metadata` object](#metadata-fields).
+
+```tsx filename="app/products/[id]/page.tsx" switcher
+import { Metadata, ResolvingMetadata } from 'next'
+
+type Props = {
+  params: { id: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export async function generateMetadata(
+  { params, searchParams }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // read route params
+  const id = params.id
+
+  // fetch data
+  const product = await fetch(`https://.../${id}`).then((res) => res.json())
+
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  return {
+    title: product.title,
+    openGraph: {
+      images: ['/some-specific-page-image.jpg', ...previousImages],
+    },
+  }
+}
+
+export default function Page({ params, searchParams }: Props) {}
+```
+
+```jsx filename="app/products/[id]/page.js" switcher
+export async function generateMetadata({ params, searchParams }, parent) {
+  // read route params
+  const id = params.id
+
+  // fetch data
+  const product = await fetch(`https://.../${id}`).then((res) => res.json())
+
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  return {
+    title: product.title,
+    openGraph: {
+      images: ['/some-specific-page-image.jpg', ...previousImages],
+    },
+  }
+}
+
+export default function Page({ params, searchParams }) {}
+```
+
+### Parameters
+
+`generateMetadata` function accepts the following parameters:
+
+- `props` - An object containing the parameters of the current route:
+
+  - `params` - An object containing the [dynamic route parameters](/docs/app/building-your-application/routing/dynamic-routes) object from the root segment down to the segment `generateMetadata` is called from. Examples:
+
+    | Route                           | URL         | `params`                  |
+    | ------------------------------- | ----------- | ------------------------- |
+    | `app/shop/[slug]/page.js`       | `/shop/1`   | `{ slug: '1' }`           |
+    | `app/shop/[tag]/[item]/page.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+    | `app/shop/[...slug]/page.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+  - `searchParams` - An object containing the current URL's [search params](https://developer.mozilla.org/docs/Learn/Common_questions/What_is_a_URL#parameters). Examples:
+
+    | URL             | `searchParams`       |
+    | --------------- | -------------------- |
+    | `/shop?a=1`     | `{ a: '1' }`         |
+    | `/shop?a=1&b=2` | `{ a: '1', b: '2' }` |
+    | `/shop?a=1&a=2` | `{ a: ['1', '2'] }`  |
+
+- `parent` - A promise of the resolved metadata from parent route segments.
+
+### Returns
+
+`generateMetadata` should return a [`Metadata` object](#metadata-fields) containing one or more metadata fields.
+
+> **Good to know**:
+>
+> - If metadata doesn't depend on runtime information, it should be defined using the static [`metadata` object](#the-metadata-object) rather than `generateMetadata`.
+> - `fetch` requests are automatically [memoized](/docs/app/building-your-application/caching#request-memoization) for the same data across `generateMetadata`, `generateStaticParams`, Layouts, Pages, and Server Components. React [`cache` can be used](/docs/app/building-your-application/caching#request-memoization) if `fetch` is unavailable.
+> - `searchParams` are only available in `page.js` segments.
+> - The [`redirect()`](/docs/app/api-reference/functions/redirect) and [`notFound()`](/docs/app/api-reference/functions/not-found) Next.js methods can also be used inside `generateMetadata`.
+
+## Metadata Fields
+
+### `title`
+
+The `title` attribute is used to set the title of the document. It can be defined as a simple [string](#string) or an optional [template object](#template-object).
+
+#### String
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  title: 'Next.js',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<title>Next.js</title>
+```
+
+#### Template object
+
+```tsx filename="app/layout.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    template: '...',
+    default: '...',
+    absolute: '...',
+  },
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export const metadata = {
+  title: {
+    default: '...',
+    template: '...',
+    absolute: '...',
+  },
+}
+```
+
+##### Default
+
+`title.default` can be used to provide a **fallback title** to child route segments that don't define a `title`.
+
+```tsx filename="app/layout.tsx"
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Acme',
+  },
+}
+```
+
+```tsx filename="app/about/page.tsx"
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {}
+
+// Output: <title>Acme</title>
+```
+
+##### Template
+
+`title.template` can be used to add a prefix or a suffix to `titles` defined in **child** route segments.
+
+```tsx filename="app/layout.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Acme',
+    default: 'Acme', // a default is required when creating a template
+  },
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export const metadata = {
+  title: {
+    template: '%s | Acme',
+    default: 'Acme', // a default is required when creating a template
+  },
+}
+```
+
+```tsx filename="app/about/page.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'About',
+}
+
+// Output: <title>About | Acme</title>
+```
+
+```jsx filename="app/about/page.js" switcher
+export const metadata = {
+  title: 'About',
+}
+
+// Output: <title>About | Acme</title>
+```
+
+> **Good to know**:
+>
+> - `title.template` applies to **child** route segments and **not** the segment it's defined in. This means:
+>
+>   - `title.default` is **required** when you add a `title.template`.
+>   - `title.template` defined in `layout.js` will not apply to a `title` defined in a `page.js` of the same route segment.
+>   - `title.template` defined in `page.js` has no effect because a page is always the terminating segment (it doesn't have any children route segments).
+>
+> - `title.template` has **no effect** if a route has not defined a `title` or `title.default`.
+
+##### Absolute
+
+`title.absolute` can be used to provide a title that **ignores** `title.template` set in parent segments.
+
+```tsx filename="app/layout.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Acme',
+  },
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export const metadata = {
+  title: {
+    template: '%s | Acme',
+  },
+}
+```
+
+```tsx filename="app/about/page.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    absolute: 'About',
+  },
+}
+
+// Output: <title>About</title>
+```
+
+```jsx filename="app/about/page.js" switcher
+export const metadata = {
+  title: {
+    absolute: 'About',
+  },
+}
+
+// Output: <title>About</title>
+```
+
+> **Good to know**:
+>
+> - `layout.js`
+>
+>   - `title` (string) and `title.default` define the default title for child segments (that do not define their own `title`). It will augment `title.template` from the closest parent segment if it exists.
+>   - `title.absolute` defines the default title for child segments. It ignores `title.template` from parent segments.
+>   - `title.template` defines a new title template for child segments.
+>
+> - `page.js`
+>   - If a page does not define its own title the closest parents resolved title will be used.
+>   - `title` (string) defines the routes title. It will augment `title.template` from the closest parent segment if it exists.
+>   - `title.absolute` defines the route title. It ignores `title.template` from parent segments.
+>   - `title.template` has no effect in `page.js` because a page is always the terminating segment of a route.
+
+### `description`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  description: 'The React Framework for the Web',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="description" content="The React Framework for the Web" />
+```
+
+### Basic Fields
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  generator: 'Next.js',
+  applicationName: 'Next.js',
+  referrer: 'origin-when-cross-origin',
+  keywords: ['Next.js', 'React', 'JavaScript'],
+  authors: [{ name: 'Seb' }, { name: 'Josh', url: 'https://nextjs.org' }],
+  creator: 'Jiachi Liu',
+  publisher: 'Sebastian Markbåge',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="application-name" content="Next.js" />
+<meta name="author" content="Seb" />
+<link rel="author" href="https://nextjs.org" />
+<meta name="author" content="Josh" />
+<meta name="generator" content="Next.js" />
+<meta name="keywords" content="Next.js,React,JavaScript" />
+<meta name="referrer" content="origin-when-cross-origin" />
+<meta name="color-scheme" content="dark" />
+<meta name="creator" content="Jiachi Liu" />
+<meta name="publisher" content="Sebastian Markbåge" />
+<meta name="format-detection" content="telephone=no, address=no, email=no" />
+```
+
+### `metadataBase`
+
+`metadataBase` is a convenience option to set a base URL prefix for `metadata` fields that require a fully qualified URL.
+
+- `metadataBase` allows URL-based `metadata` fields defined in the **current route segment and below** to use a **relative path** instead of an otherwise required absolute URL.
+- The field's relative path will be composed with `metadataBase` to form a fully qualified URL.
+- If not configured, `metadataBase` is **automatically populated** with a [default value](#default-value).
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  metadataBase: new URL('https://acme.com'),
+  alternates: {
+    canonical: '/',
+    languages: {
+      'en-US': '/en-US',
+      'de-DE': '/de-DE',
+    },
+  },
+  openGraph: {
+    images: '/og-image.png',
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="canonical" href="https://acme.com" />
+<link rel="alternate" hreflang="en-US" href="https://acme.com/en-US" />
+<link rel="alternate" hreflang="de-DE" href="https://acme.com/de-DE" />
+<meta property="og:image" content="https://acme.com/og-image.png" />
+```
+
+> **Good to know**:
+>
+> - `metadataBase` is typically set in root `app/layout.js` to apply to URL-based `metadata` fields across all routes.
+> - All URL-based `metadata` fields that require absolute URLs can be configured with a `metadataBase` option.
+> - `metadataBase` can contain a subdomain e.g. `https://app.acme.com` or base path e.g. `https://acme.com/start/from/here`
+> - If a `metadata` field provides an absolute URL, `metadataBase` will be ignored.
+> - Using a relative path in a URL-based `metadata` field without configuring a `metadataBase` will cause a build error.
+> - Next.js will normalize duplicate slashes between `metadataBase` (e.g. `https://acme.com/`) and a relative field (e.g. `/path`) to a single slash (e.g. `https://acme.com/path`)
+
+#### Default value
+
+If not configured, `metadataBase` has a **default value**
+
+- When [`VERCEL_URL`](https://vercel.com/docs/concepts/projects/environment-variables/system-environment-variables#:~:text=.-,VERCEL_URL,-The%20domain%20name) is detected: `https://${process.env.VERCEL_URL}` otherwise it falls back to `http://localhost:${process.env.PORT || 3000}`.
+- When overriding the default, we recommend using environment variables to compute the URL. This allows configuring a URL for local development, staging, and production environments.
+
+#### URL Composition
+
+URL composition favors developer intent over default directory traversal semantics.
+
+- Trailing slashes between `metadataBase` and `metadata` fields are normalized.
+- An "absolute" path in a `metadata` field (that typically would replace the whole URL path) is treated as a "relative" path (starting from the end of `metadataBase`).
+
+For example, given the following `metadataBase`:
+
+```tsx filename="app/layout.tsx" switcher
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://acme.com'),
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export const metadata = {
+  metadataBase: new URL('https://acme.com'),
+}
+```
+
+Any `metadata` fields that inherit the above `metadataBase` and set their own value will be resolved as follows:
+
+| `metadata` field                 | Resolved URL                     |
+| -------------------------------- | -------------------------------- |
+| `/`                              | `https://acme.com`               |
+| `./`                             | `https://acme.com`               |
+| `payments`                       | `https://acme.com/payments`      |
+| `/payments`                      | `https://acme.com/payments`      |
+| `./payments`                     | `https://acme.com/payments`      |
+| `../payments`                    | `https://acme.com/payments`      |
+| `https://beta.acme.com/payments` | `https://beta.acme.com/payments` |
+
+### `openGraph`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  openGraph: {
+    title: 'Next.js',
+    description: 'The React Framework for the Web',
+    url: 'https://nextjs.org',
+    siteName: 'Next.js',
+    images: [
+      {
+        url: 'https://nextjs.org/og.png',
+        width: 800,
+        height: 600,
+      },
+      {
+        url: 'https://nextjs.org/og-alt.png',
+        width: 1800,
+        height: 1600,
+        alt: 'My custom alt',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta property="og:title" content="Next.js" />
+<meta property="og:description" content="The React Framework for the Web" />
+<meta property="og:url" content="https://nextjs.org/" />
+<meta property="og:site_name" content="Next.js" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:image:url" content="https://nextjs.org/og.png" />
+<meta property="og:image:width" content="800" />
+<meta property="og:image:height" content="600" />
+<meta property="og:image:url" content="https://nextjs.org/og-alt.png" />
+<meta property="og:image:width" content="1800" />
+<meta property="og:image:height" content="1600" />
+<meta property="og:image:alt" content="My custom alt" />
+<meta property="og:type" content="website" />
+```
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  openGraph: {
+    title: 'Next.js',
+    description: 'The React Framework for the Web',
+    type: 'article',
+    publishedTime: '2023-01-01T00:00:00.000Z',
+    authors: ['Seb', 'Josh'],
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta property="og:title" content="Next.js" />
+<meta property="og:description" content="The React Framework for the Web" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2023-01-01T00:00:00.000Z" />
+<meta property="article:author" content="Seb" />
+<meta property="article:author" content="Josh" />
+```
+
+> **Good to know**:
+>
+> - It may be more convenient to use the [file-based Metadata API](/docs/app/api-reference/file-conventions/metadata/opengraph-image#image-files-jpg-png-gif) for Open Graph images. Rather than having to sync the config export with actual files, the file-based API will automatically generate the correct metadata for you.
+
+### `robots`
+
+```tsx
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: true,
+    nocache: true,
+    googleBot: {
+      index: true,
+      follow: false,
+      noimageindex: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="robots" content="noindex, follow, nocache" />
+<meta
+  name="googlebot"
+  content="index, nofollow, noimageindex, max-video-preview:-1, max-image-preview:large, max-snippet:-1"
+/>
+```
+
+### `icons`
+
+> **Good to know**: We recommend using the [file-based Metadata API](/docs/app/api-reference/file-conventions/metadata/app-icons#image-files-ico-jpg-png) for icons where possible. Rather than having to sync the config export with actual files, the file-based API will automatically generate the correct metadata for you.
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/shortcut-icon.png',
+    apple: '/apple-icon.png',
+    other: {
+      rel: 'apple-touch-icon-precomposed',
+      url: '/apple-touch-icon-precomposed.png',
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="shortcut icon" href="/shortcut-icon.png" />
+<link rel="icon" href="/icon.png" />
+<link rel="apple-touch-icon" href="/apple-icon.png" />
+<link
+  rel="apple-touch-icon-precomposed"
+  href="/apple-touch-icon-precomposed.png"
+/>
+```
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  icons: {
+    icon: [{ url: '/icon.png' }, new URL('/icon.png', 'https://example.com')],
+    shortcut: ['/shortcut-icon.png'],
+    apple: [
+      { url: '/apple-icon.png' },
+      { url: '/apple-icon-x3.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      {
+        rel: 'apple-touch-icon-precomposed',
+        url: '/apple-touch-icon-precomposed.png',
+      },
+    ],
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="shortcut icon" href="/shortcut-icon.png" />
+<link rel="icon" href="/icon.png" />
+<link rel="apple-touch-icon" href="/apple-icon.png" />
+<link
+  rel="apple-touch-icon-precomposed"
+  href="/apple-touch-icon-precomposed.png"
+/>
+<link rel="icon" href="https://example.com/icon.png" />
+<link
+  rel="apple-touch-icon"
+  href="/apple-icon-x3.png"
+  sizes="180x180"
+  type="image/png"
+/>
+```
+
+> **Good to know**: The `msapplication-*` meta tags are no longer supported in Chromium builds of Microsoft Edge, and thus no longer needed.
+
+### `themeColor`
+
+> **Deprecated**: The `themeColor` option in `metadata` is deprecated as of Next.js 14. Please use the [`viewport` configuration](/docs/app/api-reference/functions/generate-viewport) instead.
+
+### `manifest`
+
+A web application manifest, as defined in the [Web Application Manifest specification](https://developer.mozilla.org/docs/Web/Manifest).
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  manifest: 'https://nextjs.org/manifest.json',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="manifest" href="https://nextjs.org/manifest.json" />
+```
+
+### `twitter`
+
+Learn more about the [Twitter Card markup reference](https://developer.twitter.com/en/docs/twitter-for-websites/cards/overview/markup).
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Next.js',
+    description: 'The React Framework for the Web',
+    siteId: '1467726470533754880',
+    creator: '@nextjs',
+    creatorId: '1467726470533754880',
+    images: ['https://nextjs.org/og.png'],
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site:id" content="1467726470533754880" />
+<meta name="twitter:creator" content="@nextjs" />
+<meta name="twitter:creator:id" content="1467726470533754880" />
+<meta name="twitter:title" content="Next.js" />
+<meta name="twitter:description" content="The React Framework for the Web" />
+<meta name="twitter:image" content="https://nextjs.org/og.png" />
+```
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  twitter: {
+    card: 'app',
+    title: 'Next.js',
+    description: 'The React Framework for the Web',
+    siteId: '1467726470533754880',
+    creator: '@nextjs',
+    creatorId: '1467726470533754880',
+    images: {
+      url: 'https://nextjs.org/og.png',
+      alt: 'Next.js Logo',
+    },
+    app: {
+      name: 'twitter_app',
+      id: {
+        iphone: 'twitter_app://iphone',
+        ipad: 'twitter_app://ipad',
+        googleplay: 'twitter_app://googleplay',
+      },
+      url: {
+        iphone: 'https://iphone_url',
+        ipad: 'https://ipad_url',
+      },
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="twitter:site:id" content="1467726470533754880" />
+<meta name="twitter:creator" content="@nextjs" />
+<meta name="twitter:creator:id" content="1467726470533754880" />
+<meta name="twitter:title" content="Next.js" />
+<meta name="twitter:description" content="The React Framework for the Web" />
+<meta name="twitter:card" content="app" />
+<meta name="twitter:image" content="https://nextjs.org/og.png" />
+<meta name="twitter:image:alt" content="Next.js Logo" />
+<meta name="twitter:app:name:iphone" content="twitter_app" />
+<meta name="twitter:app:id:iphone" content="twitter_app://iphone" />
+<meta name="twitter:app:id:ipad" content="twitter_app://ipad" />
+<meta name="twitter:app:id:googleplay" content="twitter_app://googleplay" />
+<meta name="twitter:app:url:iphone" content="https://iphone_url" />
+<meta name="twitter:app:url:ipad" content="https://ipad_url" />
+<meta name="twitter:app:name:ipad" content="twitter_app" />
+<meta name="twitter:app:name:googleplay" content="twitter_app" />
+```
+
+### `viewport`
+
+> **Deprecated**: The `themeColor` option in `metadata` is deprecated as of Next.js 14. Please use the [`viewport` configuration](/docs/app/api-reference/functions/generate-viewport) instead.
+
+### `verification`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  verification: {
+    google: 'google',
+    yandex: 'yandex',
+    yahoo: 'yahoo',
+    other: {
+      me: ['my-email', 'my-link'],
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="google-site-verification" content="google" />
+<meta name="y_key" content="yahoo" />
+<meta name="yandex-verification" content="yandex" />
+<meta name="me" content="my-email" />
+<meta name="me" content="my-link" />
+```
+
+### `appleWebApp`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  itunes: {
+    appId: 'myAppStoreID',
+    appArgument: 'myAppArgument',
+  },
+  appleWebApp: {
+    title: 'Apple Web App',
+    statusBarStyle: 'black-translucent',
+    startupImage: [
+      '/assets/startup/apple-touch-startup-image-768x1004.png',
+      {
+        url: '/assets/startup/apple-touch-startup-image-1536x2008.png',
+        media: '(device-width: 768px) and (device-height: 1024px)',
+      },
+    ],
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta
+  name="apple-itunes-app"
+  content="app-id=myAppStoreID, app-argument=myAppArgument"
+/>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Apple Web App" />
+<link
+  href="/assets/startup/apple-touch-startup-image-768x1004.png"
+  rel="apple-touch-startup-image"
+/>
+<link
+  href="/assets/startup/apple-touch-startup-image-1536x2008.png"
+  media="(device-width: 768px) and (device-height: 1024px)"
+  rel="apple-touch-startup-image"
+/>
+<meta
+  name="apple-mobile-web-app-status-bar-style"
+  content="black-translucent"
+/>
+```
+
+### `alternates`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  alternates: {
+    canonical: 'https://nextjs.org',
+    languages: {
+      'en-US': 'https://nextjs.org/en-US',
+      'de-DE': 'https://nextjs.org/de-DE',
+    },
+    media: {
+      'only screen and (max-width: 600px)': 'https://nextjs.org/mobile',
+    },
+    types: {
+      'application/rss+xml': 'https://nextjs.org/rss',
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="canonical" href="https://nextjs.org" />
+<link rel="alternate" hreflang="en-US" href="https://nextjs.org/en-US" />
+<link rel="alternate" hreflang="de-DE" href="https://nextjs.org/de-DE" />
+<link
+  rel="alternate"
+  media="only screen and (max-width: 600px)"
+  href="https://nextjs.org/mobile"
+/>
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  href="https://nextjs.org/rss"
+/>
+```
+
+### `appLinks`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  appLinks: {
+    ios: {
+      url: 'https://nextjs.org/ios',
+      app_store_id: 'app_store_id',
+    },
+    android: {
+      package: 'com.example.android/package',
+      app_name: 'app_name_android',
+    },
+    web: {
+      url: 'https://nextjs.org/web',
+      should_fallback: true,
+    },
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta property="al:ios:url" content="https://nextjs.org/ios" />
+<meta property="al:ios:app_store_id" content="app_store_id" />
+<meta property="al:android:package" content="com.example.android/package" />
+<meta property="al:android:app_name" content="app_name_android" />
+<meta property="al:web:url" content="https://nextjs.org/web" />
+<meta property="al:web:should_fallback" content="true" />
+```
+
+### `archives`
+
+Describes a collection of records, documents, or other materials of historical interest ([source](https://www.w3.org/TR/2011/WD-html5-20110113/links.html#rel-archives)).
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  archives: ['https://nextjs.org/13'],
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="archives" href="https://nextjs.org/13" />
+```
+
+### `assets`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  assets: ['https://nextjs.org/assets'],
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="assets" href="https://nextjs.org/assets" />
+```
+
+### `bookmarks`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  bookmarks: ['https://nextjs.org/13'],
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="bookmarks" href="https://nextjs.org/13" />
+```
+
+### `category`
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  category: 'technology',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="category" content="technology" />
+```
+
+### `other`
+
+All metadata options should be covered using the built-in support. However, there may be custom metadata tags specific to your site, or brand new metadata tags just released. You can use the `other` option to render any custom metadata tag.
+
+```jsx filename="layout.js | page.js"
+export const metadata = {
+  other: {
+    custom: 'meta',
+  },
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="custom" content="meta" />
+```
+
+## Unsupported Metadata
+
+The following metadata types do not currently have built-in support. However, they can still be rendered in the layout or page itself.
+
+| Metadata                      | Recommendation                                                                                                                                                                                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<meta http-equiv="...">`     | Use appropriate HTTP Headers via [`redirect()`](/docs/app/api-reference/functions/redirect), [Middleware](/docs/app/building-your-application/routing/middleware#nextresponse), [Security Headers](/docs/app/api-reference/next-config-js/headers) |
+| `<base>`                      | Render the tag in the layout or page itself.                                                                                                                                                                                                       |
+| `<noscript>`                  | Render the tag in the layout or page itself.                                                                                                                                                                                                       |
+| `<style>`                     | Learn more about [styling in Next.js](/docs/app/building-your-application/styling/css-modules).                                                                                                                                                    |
+| `<script>`                    | Learn more about [using scripts](/docs/app/building-your-application/optimizing/scripts).                                                                                                                                                          |
+| `<link rel="stylesheet" />`   | `import` stylesheets directly in the layout or page itself.                                                                                                                                                                                        |
+| `<link rel="preload />`       | Use [ReactDOM preload method](#link-relpreload)                                                                                                                                                                                                    |
+| `<link rel="preconnect" />`   | Use [ReactDOM preconnect method](#link-relpreconnect)                                                                                                                                                                                              |
+| `<link rel="dns-prefetch" />` | Use [ReactDOM prefetchDNS method](#link-reldns-prefetch)                                                                                                                                                                                           |
+
+### Resource hints
+
+The `<link>` element has a number of `rel` keywords that can be used to hint to the browser that an external resource is likely to be needed. The browser uses this information to apply preloading optimizations depending on the keyword.
+
+While the Metadata API doesn't directly support these hints, you can use new [`ReactDOM` methods](https://github.com/facebook/react/pull/26237) to safely insert them into the `<head>` of the document.
+
+```tsx filename="app/preload-resources.tsx" switcher
+'use client'
+
+import ReactDOM from 'react-dom'
+
+export function PreloadResources() {
+  ReactDOM.preload('...', { as: '...' })
+  ReactDOM.preconnect('...', { crossOrigin: '...' })
+  ReactDOM.prefetchDNS('...')
+
+  return null
+}
+```
+
+```jsx filename="app/preload-resources.js" switcher
+'use client'
+
+import ReactDOM from 'react-dom'
+
+export function PreloadResources() {
+  ReactDOM.preload('...', { as: '...' })
+  ReactDOM.preconnect('...', { crossOrigin: '...' })
+  ReactDOM.prefetchDNS('...')
+
+  return null
+}
+```
+
+##### `<link rel="preload">`
+
+Start loading a resource early in the page rendering (browser) lifecycle. [MDN Docs](https://developer.mozilla.org/docs/Web/HTML/Attributes/rel/preload).
+
+```tsx
+ReactDOM.preload(href: string, options: { as: string })
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="preload" href="..." as="..." />
+```
+
+##### `<link rel="preconnect">`
+
+Preemptively initiate a connection to an origin. [MDN Docs](https://developer.mozilla.org/docs/Web/HTML/Attributes/rel/preconnect).
+
+```tsx
+ReactDOM.preconnect(href: string, options?: { crossOrigin?: string })
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="preconnect" href="..." crossorigin />
+```
+
+##### `<link rel="dns-prefetch">`
+
+Attempt to resolve a domain name before resources get requested. [MDN Docs](https://developer.mozilla.org/docs/Web/HTML/Attributes/rel/dns-prefetch).
+
+```tsx
+ReactDOM.prefetchDNS(href: string)
+```
+
+```html filename="<head> output" hideLineNumbers
+<link rel="dns-prefetch" href="..." />
+```
+
+> **Good to know**:
+>
+> - These methods are currently only supported in Client Components, which are still Server Side Rendered on initial page load.
+> - Next.js in-built features such as `next/font`, `next/image` and `next/script` automatically handle relevant resource hints.
+> - React 18.3 does not yet include type definitions for `ReactDOM.preload`, `ReactDOM.preconnect`, and `ReactDOM.preconnectDNS`. You can use `// @ts-ignore` as a temporary solution to avoid type errors.
+
+## Types
+
+You can add type safety to your metadata by using the `Metadata` type. If you are using the [built-in TypeScript plugin](/docs/app/building-your-application/configuring/typescript) in your IDE, you do not need to manually add the type, but you can still explicitly add it if you want.
+
+### `metadata` object
+
+```tsx
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Next.js',
+}
+```
+
+### `generateMetadata` function
+
+#### Regular function
+
+```tsx
+import type { Metadata } from 'next'
+
+export function generateMetadata(): Metadata {
+  return {
+    title: 'Next.js',
+  }
+}
+```
+
+#### Async function
+
+```tsx
+import type { Metadata } from 'next'
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'Next.js',
+  }
+}
+```
+
+#### With segment props
+
+```tsx
+import type { Metadata } from 'next'
+
+type Props = {
+  params: { id: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export function generateMetadata({ params, searchParams }: Props): Metadata {
+  return {
+    title: 'Next.js',
+  }
+}
+
+export default function Page({ params, searchParams }: Props) {}
+```
+
+#### With parent metadata
+
+```tsx
+import type { Metadata, ResolvingMetadata } from 'next'
+
+export async function generateMetadata(
+  { params, searchParams }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  return {
+    title: 'Next.js',
+  }
+}
+```
+
+#### JavaScript Projects
+
+For JavaScript projects, you can use JSDoc to add type safety.
+
+```js
+/** @type {import("next").Metadata} */
+export const metadata = {
+  title: 'Next.js',
+}
+```
+
+## Version History
+
+| Version   | Changes                                                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v13.2.0` | `viewport`, `themeColor`, and `colorScheme` deprecated in favor of the [`viewport` configuration](/docs/app/api-reference/functions/generate-viewport). |
+| `v13.2.0` | `metadata` and `generateMetadata` introduced.                                                                                                           |
+
+
+## generate-static-params
+
+
+---
+title: generateStaticParams
+description: API reference for the generateStaticParams function.
+---
+
+The `generateStaticParams` function can be used in combination with [dynamic route segments](/docs/app/building-your-application/routing/dynamic-routes) to [**statically generate**](/docs/app/building-your-application/rendering/server-components#static-rendering-default) routes at build time instead of on-demand at request time.
+
+```jsx filename="app/blog/[slug]/page.js"
+// Return a list of `params` to populate the [slug] dynamic segment
+export async function generateStaticParams() {
+  const posts = await fetch('https://.../posts').then((res) => res.json())
+
+  return posts.map((post) => ({
+    slug: post.slug,
+  }))
+}
+
+// Multiple versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+export default function Page({ params }) {
+  const { slug } = params
+  // ...
+}
+```
+
+> **Good to know**
+>
+> - You can use the [`dynamicParams`](/docs/app/api-reference/file-conventions/route-segment-config#dynamicparams) segment config option to control what happens when a dynamic segment is visited that was not generated with `generateStaticParams`.
+> - During `next dev`, `generateStaticParams` will be called when you navigate to a route.
+> - During `next build`, `generateStaticParams` runs before the corresponding Layouts or Pages are generated.
+> - During revalidation (ISR), `generateStaticParams` will not be called again.
+> - `generateStaticParams` replaces the [`getStaticPaths`](/docs/pages/api-reference/functions/get-static-paths) function in the Pages Router.
+
+## Parameters
+
+`options.params` (optional)
+
+If multiple dynamic segments in a route use `generateStaticParams`, the child `generateStaticParams` function is executed once for each set of `params` the parent generates.
+
+The `params` object contains the populated `params` from the parent `generateStaticParams`, which can be used to [generate the `params` in a child segment](#multiple-dynamic-segments-in-a-route).
+
+## Returns
+
+`generateStaticParams` should return an array of objects where each object represents the populated dynamic segments of a single route.
+
+- Each property in the object is a dynamic segment to be filled in for the route.
+- The properties name is the segment's name, and the properties value is what that segment should be filled in with.
+
+| Example Route                    | `generateStaticParams` Return Type        |
+| -------------------------------- | ----------------------------------------- |
+| `/product/[id]`                  | `{ id: string }[]`                        |
+| `/products/[category]/[product]` | `{ category: string, product: string }[]` |
+| `/products/[...slug]`            | `{ slug: string[] }[]`                    |
+
+## Single Dynamic Segment
+
+```tsx filename="app/product/[id]/page.tsx" switcher
+export function generateStaticParams() {
+  return [{ id: '1' }, { id: '2' }, { id: '3' }]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /product/1
+// - /product/2
+// - /product/3
+export default function Page({ params }: { params: { id: string } }) {
+  const { id } = params
+  // ...
+}
+```
+
+```jsx filename="app/product/[id]/page.js" switcher
+export function generateStaticParams() {
+  return [{ id: '1' }, { id: '2' }, { id: '3' }]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /product/1
+// - /product/2
+// - /product/3
+export default function Page({ params }) {
+  const { id } = params
+  // ...
+}
+```
+
+## Multiple Dynamic Segments
+
+```tsx filename="app/products/[category]/[product]/page.tsx" switcher
+export function generateStaticParams() {
+  return [
+    { category: 'a', product: '1' },
+    { category: 'b', product: '2' },
+    { category: 'c', product: '3' },
+  ]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /products/a/1
+// - /products/b/2
+// - /products/c/3
+export default function Page({
+  params,
+}: {
+  params: { category: string; product: string }
+}) {
+  const { category, product } = params
+  // ...
+}
+```
+
+```jsx filename="app/products/[category]/[product]/page.js" switcher
+export function generateStaticParams() {
+  return [
+    { category: 'a', product: '1' },
+    { category: 'b', product: '2' },
+    { category: 'c', product: '3' },
+  ]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /products/a/1
+// - /products/b/2
+// - /products/c/3
+export default function Page({ params }) {
+  const { category, product } = params
+  // ...
+}
+```
+
+## Catch-all Dynamic Segment
+
+```tsx filename="app/product/[...slug]/page.tsx" switcher
+export function generateStaticParams() {
+  return [{ slug: ['a', '1'] }, { slug: ['b', '2'] }, { slug: ['c', '3'] }]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /product/a/1
+// - /product/b/2
+// - /product/c/3
+export default function Page({ params }: { params: { slug: string[] } }) {
+  const { slug } = params
+  // ...
+}
+```
+
+```jsx filename="app/product/[...slug]/page.js" switcher
+export function generateStaticParams() {
+  return [{ slug: ['a', '1'] }, { slug: ['b', '2'] }, { slug: ['c', '3'] }]
+}
+
+// Three versions of this page will be statically generated
+// using the `params` returned by `generateStaticParams`
+// - /product/a/1
+// - /product/b/2
+// - /product/c/3
+export default function Page({ params }) {
+  const { slug } = params
+  // ...
+}
+```
+
+## Examples
+
+### Multiple Dynamic Segments in a Route
+
+You can generate params for dynamic segments above the current layout or page, but **not below**. For example, given the `app/products/[category]/[product]` route:
+
+- `app/products/[category]/[product]/page.js` can generate params for **both** `[category]` and `[product]`.
+- `app/products/[category]/layout.js` can **only** generate params for `[category]`.
+
+There are two approaches to generating params for a route with multiple dynamic segments:
+
+### Generate params from the bottom up
+
+Generate multiple dynamic segments from the child route segment.
+
+```tsx filename="app/products/[category]/[product]/page.tsx" switcher
+// Generate segments for both [category] and [product]
+export async function generateStaticParams() {
+  const products = await fetch('https://.../products').then((res) => res.json())
+
+  return products.map((product) => ({
+    category: product.category.slug,
+    product: product.id,
+  }))
+}
+
+export default function Page({
+  params,
+}: {
+  params: { category: string; product: string }
+}) {
+  // ...
+}
+```
+
+```jsx filename="app/products/[category]/[product]/page.js" switcher
+// Generate segments for both [category] and [product]
+export async function generateStaticParams() {
+  const products = await fetch('https://.../products').then((res) => res.json())
+
+  return products.map((product) => ({
+    category: product.category.slug,
+    product: product.id,
+  }))
+}
+
+export default function Page({ params }) {
+  // ...
+}
+```
+
+### Generate params from the top down
+
+Generate the parent segments first and use the result to generate the child segments.
+
+```tsx filename="app/products/[category]/layout.tsx" switcher
+// Generate segments for [category]
+export async function generateStaticParams() {
+  const products = await fetch('https://.../products').then((res) => res.json())
+
+  return products.map((product) => ({
+    category: product.category.slug,
+  }))
+}
+
+export default function Layout({ params }: { params: { category: string } }) {
+  // ...
+}
+```
+
+```jsx filename="app/products/[category]/layout.js" switcher
+// Generate segments for [category]
+export async function generateStaticParams() {
+  const products = await fetch('https://.../products').then((res) => res.json())
+
+  return products.map((product) => ({
+    category: product.category.slug,
+  }))
+}
+
+export default function Layout({ params }) {
+  // ...
+}
+```
+
+A child route segment's `generateStaticParams` function is executed once for each segment a parent `generateStaticParams` generates.
+
+The child `generateStaticParams` function can use the `params` returned from the parent `generateStaticParams` function to dynamically generate its own segments.
+
+```tsx filename="app/products/[category]/[product]/page.tsx" switcher
+// Generate segments for [product] using the `params` passed from
+// the parent segment's `generateStaticParams` function
+export async function generateStaticParams({
+  params: { category },
+}: {
+  params: { category: string }
+}) {
+  const products = await fetch(
+    `https://.../products?category=${category}`
+  ).then((res) => res.json())
+
+  return products.map((product) => ({
+    product: product.id,
+  }))
+}
+
+export default function Page({
+  params,
+}: {
+  params: { category: string; product: string }
+}) {
+  // ...
+}
+```
+
+```jsx filename="app/products/[category]/[product]/page.js" switcher
+// Generate segments for [product] using the `params` passed from
+// the parent segment's `generateStaticParams` function
+export async function generateStaticParams({ params: { category } }) {
+  const products = await fetch(
+    `https://.../products?category=${category}`
+  ).then((res) => res.json())
+
+  return products.map((product) => ({
+    product: product.id,
+  }))
+}
+
+export default function Page({ params }) {
+  // ...
+}
+```
+
+> **Good to know**: `fetch` requests are automatically [memoized](/docs/app/building-your-application/caching#request-memoization) for the same data across all `generate`-prefixed functions, Layouts, Pages, and Server Components. React [`cache` can be used](/docs/app/building-your-application/caching#request-memoization) if `fetch` is unavailable.
+
+## Version History
+
+| Version   | Changes                            |
+| --------- | ---------------------------------- |
+| `v13.0.0` | `generateStaticParams` introduced. |
+
+
+## generate-viewport
+
+
+---
+title: generateViewport
+description: API Reference for the generateViewport function.
+related:
+  title: Next Steps
+  description: View all the Metadata API options.
+  links:
+    - app/api-reference/file-conventions/metadata
+    - app/building-your-application/optimizing/metadata
+---
+
+You can customize the initial viewport of the page with the static `viewport` object or the dynamic `generateViewport` function.
+
+> **Good to know**:
+>
+> - The `viewport` object and `generateViewport` function exports are **only supported in Server Components**.
+> - You cannot export both the `viewport` object and `generateViewport` function from the same route segment.
+
+## The `viewport` object
+
+To define the viewport options, export a `viewport` object from a `layout.js` or `page.js` file.
+
+```tsx filename="layout.tsx | page.tsx" switcher
+import { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  themeColor: 'black',
+}
+
+export default function Page() {}
+```
+
+```jsx filename="layout.js | page.js" switcher
+export const viewport = {
+  themeColor: 'black',
+}
+
+export default function Page() {}
+```
+
+## `generateViewport` function
+
+`generateViewport` should return a [`Viewport` object](#viewport-fields) containing one or more viewport fields.
+
+```tsx filename="layout.tsx | page.tsx" switcher
+export function generateViewport({ params }) {
+  return {
+    themeColor: '...',
+  }
+}
+```
+
+```jsx filename="layout.js | page.js" switcher
+export function generateViewport({ params }) {
+  return {
+    themeColor: '...',
+  }
+}
+```
+
+> **Good to know**:
+>
+> - If the viewport doesn't depend on runtime information, it should be defined using the static [`viewport` object](#the-viewport-object) rather than `generateMetadata`.
+> - Marking `generateViewport` as `async` is not yet supported. If you still require this functionality, continue using the previous `generateMetadata` option. We will be adding support for `async` in an upcoming minor release.
+
+## Viewport Fields
+
+### `themeColor`
+
+Learn more about [theme-color](https://developer.mozilla.org/docs/Web/HTML/Element/meta/name/theme-color).
+
+**Simple theme color**
+
+```jsx filename="layout.js | page.js"
+export const viewport = {
+  themeColor: 'black',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="theme-color" content="black" />
+```
+
+**With media attribute**
+
+```jsx filename="layout.js | page.js"
+export const viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'cyan' },
+    { media: '(prefers-color-scheme: dark)', color: 'black' },
+  ],
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="cyan" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="black" />
+```
+
+### `width`, `initialScale`, and `maximumScale`
+
+> **Good to know**: The `viewport` meta tag is automatically set with the following default values. Usually, manual configuration is unnecessary as the default is sufficient. However, the information is provided for completeness.
+
+```jsx filename="layout.js | page.js"
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  // Also supported by less commonly used
+  // interactiveWidget: 'resizes-visual',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, maximum-scale=1"
+/>
+```
+
+### `colorScheme`
+
+Learn more about [`color-scheme`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta/name#:~:text=color%2Dscheme%3A%20specifies,of%20the%20following%3A).
+
+```jsx filename="layout.js | page.js"
+export const viewport = {
+  colorScheme: 'dark',
+}
+```
+
+```html filename="<head> output" hideLineNumbers
+<meta name="color-scheme" content="dark" />
+```
+
+## Types
+
+You can add type safety to your viewport object by using the `Viewport` type. If you are using the [built-in TypeScript plugin](/docs/app/building-your-application/configuring/typescript) in your IDE, you do not need to manually add the type, but you can still explicitly add it if you want.
+
+### `viewport` object
+
+```tsx
+import type { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  themeColor: 'black',
+}
+```
+
+### `generateViewport` function
+
+#### Regular function
+
+```tsx
+import type { Viewport } from 'next'
+
+export function generateViewport(): Viewport {
+  return {
+    themeColor: 'black',
+  }
+}
+```
+
+#### With segment props
+
+```tsx
+import type { Viewport } from 'next'
+
+type Props = {
+  params: { id: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export function generateViewport({ params, searchParams }: Props): Viewport {
+  return {
+    themeColor: 'black',
+  }
+}
+
+export default function Page({ params, searchParams }: Props) {}
+```
+
+#### JavaScript Projects
+
+For JavaScript projects, you can use JSDoc to add type safety.
+
+```js
+/** @type {import("next").Viewport} */
+export const viewport = {
+  themeColor: 'black',
+}
+```
+
+## Version History
+
+| Version   | Changes                                       |
+| --------- | --------------------------------------------- |
+| `v14.0.0` | `viewport` and `generateViewport` introduced. |
+
+
+## headers
+
+
+---
+title: headers
+description: API reference for the headers function.
+---
+
+The `headers` function allows you to read the HTTP incoming request headers from a [Server Component](/docs/app/building-your-application/rendering/server-components).
+
+## `headers()`
+
+This API extends the [Web Headers API](https://developer.mozilla.org/docs/Web/API/Headers). It is **read-only**, meaning you cannot `set` / `delete` the outgoing request headers.
+
+```tsx filename="app/page.tsx" switcher
+import { headers } from 'next/headers'
+
+export default function Page() {
+  const headersList = headers()
+  const referer = headersList.get('referer')
+
+  return <div>Referer: {referer}</div>
+}
+```
+
+```jsx filename="app/page.js" switcher
+import { headers } from 'next/headers'
+
+export default function Page() {
+  const headersList = headers()
+  const referer = headersList.get('referer')
+
+  return <div>Referer: {referer}</div>
+}
+```
+
+> **Good to know**:
+>
+> - `headers()` is a **[Dynamic Function](/docs/app/building-your-application/rendering/server-components#server-rendering-strategies#dynamic-functions)** whose returned values cannot be known ahead of time. Using it in a layout or page will opt a route into **[dynamic rendering](/docs/app/building-your-application/rendering/server-components#dynamic-rendering)** at request time.
+
+### API Reference
+
+```tsx
+const headersList = headers()
+```
+
+#### Parameters
+
+`headers` does not take any parameters.
+
+#### Returns
+
+`headers` returns a **read-only** [Web Headers](https://developer.mozilla.org/docs/Web/API/Headers) object.
+
+- [`Headers.entries()`](https://developer.mozilla.org/docs/Web/API/Headers/entries): Returns an [`iterator`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Iteration_protocols) allowing to go through all key/value pairs contained in this object.
+- [`Headers.forEach()`](https://developer.mozilla.org/docs/Web/API/Headers/forEach): Executes a provided function once for each key/value pair in this `Headers` object.
+- [`Headers.get()`](https://developer.mozilla.org/docs/Web/API/Headers/get): Returns a [`String`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String) sequence of all the values of a header within a `Headers` object with a given name.
+- [`Headers.has()`](https://developer.mozilla.org/docs/Web/API/Headers/has): Returns a boolean stating whether a `Headers` object contains a certain header.
+- [`Headers.keys()`](https://developer.mozilla.org/docs/Web/API/Headers/keys): Returns an [`iterator`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Iteration_protocols) allowing you to go through all keys of the key/value pairs contained in this object.
+- [`Headers.values()`](https://developer.mozilla.org/docs/Web/API/Headers/values): Returns an [`iterator`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Iteration_protocols) allowing you to go through all values of the key/value pairs contained in this object.
+
+### Examples
+
+#### Usage with Data Fetching
+
+`headers()` can be used in combination with [Suspense for Data Fetching](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating).
+
+```jsx filename="app/page.js"
+import { headers } from 'next/headers'
+
+async function getUser() {
+  const headersInstance = headers()
+  const authorization = headersInstance.get('authorization')
+  // Forward the authorization header
+  const res = await fetch('...', {
+    headers: { authorization },
+  })
+  return res.json()
+}
+
+export default async function UserPage() {
+  const user = await getUser()
+  return <h1>{user.name}</h1>
+}
+```
+
+## Version History
+
+| Version   | Changes               |
+| --------- | --------------------- |
+| `v13.0.0` | `headers` introduced. |
+
+
+## image-response
+
+
+---
+title: ImageResponse
+description: API Reference for the ImageResponse constructor.
+---
+
+The `ImageResponse` constructor allows you to generate dynamic images using JSX and CSS. This is useful for generating social media images such as Open Graph images, Twitter cards, and more.
+
+The following options are available for `ImageResponse`:
+
+```jsx
+import { ImageResponse } from 'next/og'
+
+new ImageResponse(
+  element: ReactElement,
+  options: {
+    width?: number = 1200
+    height?: number = 630
+    emoji?: 'twemoji' | 'blobmoji' | 'noto' | 'openmoji' = 'twemoji',
+    fonts?: {
+      name: string,
+      data: ArrayBuffer,
+      weight: number,
+      style: 'normal' | 'italic'
+    }[]
+    debug?: boolean = false
+
+    // Options that will be passed to the HTTP response
+    status?: number = 200
+    statusText?: string
+    headers?: Record<string, string>
+  },
+)
+```
+
+## Supported CSS Properties
+
+Please refer to [Satori’s documentation](https://github.com/vercel/satori#css) for a list of supported HTML and CSS features.
+
+## Version History
+
+| Version   | Changes                                               |
+| --------- | ----------------------------------------------------- |
+| `v14.0.0` | `ImageResponse` moved from `next/server` to `next/og` |
+| `v13.3.0` | `ImageResponse` can be imported from `next/server`.   |
+| `v13.0.0` | `ImageResponse` introduced via `@vercel/og` package.  |
+
+
+## index
+
+
+---
+title: Functions
+description: API Reference for Next.js Functions and Hooks.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+
+## next-request
+
+
+---
+title: NextRequest
+description: API Reference for NextRequest.
+---
+
+NextRequest extends the [Web Request API](https://developer.mozilla.org/docs/Web/API/Request) with additional convenience methods.
+
+## `cookies`
+
+Read or mutate the [`Set-Cookie`](https://developer.mozilla.org/docs/Web/HTTP/Headers/Set-Cookie) header of the request.
+
+### `set(name, value)`
+
+Given a name, set a cookie with the given value on the request.
+
+```ts
+// Given incoming request /home
+// Set a cookie to hide the banner
+// request will have a `Set-Cookie:show-banner=false;path=/home` header
+request.cookies.set('show-banner', 'false')
+```
+
+### `get(name)`
+
+Given a cookie name, return the value of the cookie. If the cookie is not found, `undefined` is returned. If multiple cookies are found, the first one is returned.
+
+```ts
+// Given incoming request /home
+// { name: 'show-banner', value: 'false', Path: '/home' }
+request.cookies.get('show-banner')
+```
+
+### `getAll()`
+
+Given a cookie name, return the values of the cookie. If no name is given, return all cookies on the request.
+
+```ts
+// Given incoming request /home
+// [
+//   { name: 'experiments', value: 'new-pricing-page', Path: '/home' },
+//   { name: 'experiments', value: 'winter-launch', Path: '/home' },
+// ]
+request.cookies.getAll('experiments')
+// Alternatively, get all cookies for the request
+request.cookies.getAll()
+```
+
+### `delete(name)`
+
+Given a cookie name, delete the cookie from the request.
+
+```ts
+// Returns true for deleted, false is nothing is deleted
+request.cookies.delete('experiments')
+```
+
+### `has(name)`
+
+Given a cookie name, return `true` if the cookie exists on the request.
+
+```ts
+// Returns true if cookie exists, false if it does not
+request.cookies.has('experiments')
+```
+
+### `clear()`
+
+Remove the `Set-Cookie` header from the request.
+
+```ts
+request.cookies.clear()
+```
+
+## `nextUrl`
+
+Extends the native [`URL`](https://developer.mozilla.org/docs/Web/API/URL) API with additional convenience methods, including Next.js specific properties.
+
+```ts
+// Given a request to /home, pathname is /home
+request.nextUrl.pathname
+// Given a request to /home?name=lee, searchParams is { 'name': 'lee' }
+request.nextUrl.searchParams
+```
+
+## Version History
+
+| Version   | Changes                       |
+| --------- | ----------------------------- |
+| `v13.0.0` | `useSearchParams` introduced. |
+
+
+## next-response
+
+
+---
+title: NextResponse
+description: API Reference for NextResponse.
+---
+
+NextResponse extends the [Web Response API](https://developer.mozilla.org/docs/Web/API/Response) with additional convenience methods.
+
+## `cookies`
+
+Read or mutate the [`Set-Cookie`](https://developer.mozilla.org/docs/Web/HTTP/Headers/Set-Cookie) header of the response.
+
+### `set(name, value)`
+
+Given a name, set a cookie with the given value on the response.
+
+```ts
+// Given incoming request /home
+let response = NextResponse.next()
+// Set a cookie to hide the banner
+response.cookies.set('show-banner', 'false')
+// Response will have a `Set-Cookie:show-banner=false;path=/home` header
+return response
+```
+
+### `get(name)`
+
+Given a cookie name, return the value of the cookie. If the cookie is not found, `undefined` is returned. If multiple cookies are found, the first one is returned.
+
+```ts
+// Given incoming request /home
+let response = NextResponse.next()
+// { name: 'show-banner', value: 'false', Path: '/home' }
+response.cookies.get('show-banner')
+```
+
+### `getAll()`
+
+Given a cookie name, return the values of the cookie. If no name is given, return all cookies on the response.
+
+```ts
+// Given incoming request /home
+let response = NextResponse.next()
+// [
+//   { name: 'experiments', value: 'new-pricing-page', Path: '/home' },
+//   { name: 'experiments', value: 'winter-launch', Path: '/home' },
+// ]
+response.cookies.getAll('experiments')
+// Alternatively, get all cookies for the response
+response.cookies.getAll()
+```
+
+### `delete(name)`
+
+Given a cookie name, delete the cookie from the response.
+
+```ts
+// Given incoming request /home
+let response = NextResponse.next()
+// Returns true for deleted, false is nothing is deleted
+response.cookies.delete('experiments')
+```
+
+## `json()`
+
+Produce a response with the given JSON body.
+
+```ts filename="app/api/route.ts" switcher
+import { NextResponse } from 'next/server'
+
+export async function GET(request: Request) {
+  return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+}
+```
+
+```js filename="app/api/route.js" switcher
+import { NextResponse } from 'next/server'
+
+export async function GET(request) {
+  return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+}
+```
+
+## `redirect()`
+
+Produce a response that redirects to a [URL](https://developer.mozilla.org/docs/Web/API/URL).
+
+```ts
+import { NextResponse } from 'next/server'
+
+return NextResponse.redirect(new URL('/new', request.url))
+```
+
+The [URL](https://developer.mozilla.org/docs/Web/API/URL) can be created and modified before being used in the `NextResponse.redirect()` method. For example, you can use the `request.nextUrl` property to get the current URL, and then modify it to redirect to a different URL.
+
+```ts
+import { NextResponse } from 'next/server'
+
+// Given an incoming request...
+const loginUrl = new URL('/login', request.url)
+// Add ?from=/incoming-url to the /login URL
+loginUrl.searchParams.set('from', request.nextUrl.pathname)
+// And redirect to the new URL
+return NextResponse.redirect(loginUrl)
+```
+
+## `rewrite()`
+
+Produce a response that rewrites (proxies) the given [URL](https://developer.mozilla.org/docs/Web/API/URL) while preserving the original URL.
+
+```ts
+import { NextResponse } from 'next/server'
+
+// Incoming request: /about, browser shows /about
+// Rewritten request: /proxy, browser shows /about
+return NextResponse.rewrite(new URL('/proxy', request.url))
+```
+
+## `next()`
+
+The `next()` method is useful for Middleware, as it allows you to return early and continue routing.
+
+```ts
+import { NextResponse } from 'next/server'
+
+return NextResponse.next()
+```
+
+You can also forward `headers` when producing the response:
+
+```ts
+import { NextResponse } from 'next/server'
+
+// Given an incoming request...
+const newHeaders = new Headers(request.headers)
+// Add a new header
+newHeaders.set('x-version', '123')
+// And produce a response with the new headers
+return NextResponse.next({
+  request: {
+    // New request headers
+    headers: newHeaders,
+  },
+})
+```
+
+
+## not-found
+
+
+---
+title: notFound
+description: API Reference for the notFound function.
+---
+
+The `notFound` function allows you to render the [`not-found file`](/docs/app/api-reference/file-conventions/not-found) within a route segment as well as inject a `<meta name="robots" content="noindex" />` tag.
+
+## `notFound()`
+
+Invoking the `notFound()` function throws a `NEXT_NOT_FOUND` error and terminates rendering of the route segment in which it was thrown. Specifying a [**not-found** file](/docs/app/api-reference/file-conventions/not-found) allows you to gracefully handle such errors by rendering a Not Found UI within the segment.
+
+```jsx filename="app/user/[id]/page.js"
+import { notFound } from 'next/navigation'
+
+async function fetchUser(id) {
+  const res = await fetch('https://...')
+  if (!res.ok) return undefined
+  return res.json()
+}
+
+export default async function Profile({ params }) {
+  const user = await fetchUser(params.id)
+
+  if (!user) {
+    notFound()
+  }
+
+  // ...
+}
+```
+
+> **Good to know**: `notFound()` does not require you to use `return notFound()` due to using the TypeScript [`never`](https://www.typescriptlang.org/docs/handbook/2/functions.html#never) type.
+
+## Version History
+
+| Version   | Changes                |
+| --------- | ---------------------- |
+| `v13.0.0` | `notFound` introduced. |
+
+
+## permanentRedirect
+
+
+---
+title: permanentRedirect
+description: API Reference for the permanentRedirect function.
+---
+
+The `permanentRedirect` function allows you to redirect the user to another URL. `permanentRedirect` can be used in Server Components, Client Components, [Route Handlers](/docs/app/building-your-application/routing/route-handlers), and [Server Actions](/docs/app/building-your-application/data-fetching/forms-and-mutations).
+
+When used in a streaming context, this will insert a meta tag to emit the redirect on the client side. Otherwise, it will serve a 308 (Permanent) HTTP redirect response to the caller.
+
+If a resource doesn't exist, you can use the [`notFound` function](/docs/app/api-reference/functions/not-found) instead.
+
+> **Good to know**: If you prefer to return a 307 (Temporary) HTTP redirect instead of 308 (Permanent), you can use the [`redirect` function](/docs/app/api-reference/functions/redirect) instead.
+
+## Parameters
+
+The `permanentRedirect` function accepts two arguments:
+
+```js
+permanentRedirect(path, type)
+```
+
+| Parameter | Type                                                          | Description                                                 |
+| --------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `path`    | `string`                                                      | The URL to redirect to. Can be a relative or absolute path. |
+| `type`    | `'replace'` (default) or `'push'` (default in Server Actions) | The type of redirect to perform.                            |
+
+By default, `permanentRedirect` will use `push` (adding a new entry to the browser history stack) in [Server Actions](/docs/app/building-your-application/data-fetching/forms-and-mutations) and `replace` (replacing the current URL in the browser history stack) everywhere else. You can override this behavior by specifying the `type` parameter.
+
+The `type` parameter has no effect when used in Server Components.
+
+## Returns
+
+`permanentRedirect` does not return any value.
+
+## Example
+
+Invoking the `permanentRedirect()` function throws a `NEXT_REDIRECT` error and terminates rendering of the route segment in which it was thrown.
+
+```jsx filename="app/team/[id]/page.js"
+import { permanentRedirect } from 'next/navigation'
+
+async function fetchTeam(id) {
+  const res = await fetch('https://...')
+  if (!res.ok) return undefined
+  return res.json()
+}
+
+export default async function Profile({ params }) {
+  const team = await fetchTeam(params.id)
+  if (!team) {
+    permanentRedirect('/login')
+  }
+
+  // ...
+}
+```
+
+> **Good to know**: `permanentRedirect` does not require you to use `return permanentRedirect()` as it uses the TypeScript [`never`](https://www.typescriptlang.org/docs/handbook/2/functions.html#never) type.
+
+
+## redirect
+
+
+---
+title: redirect
+description: API Reference for the redirect function.
+---
+
+The `redirect` function allows you to redirect the user to another URL. `redirect` can be used in Server Components, Client Components, [Route Handlers](/docs/app/building-your-application/routing/route-handlers), and [Server Actions](/docs/app/building-your-application/data-fetching/forms-and-mutations).
+
+When used in a [streaming context](/docs/app/building-your-application/routing/loading-ui-and-streaming#what-is-streaming), this will insert a meta tag to emit the redirect on the client side. Otherwise, it will serve a 307 HTTP redirect response to the caller.
+
+If a resource doesn't exist, you can use the [`notFound` function](/docs/app/api-reference/functions/not-found) instead.
+
+> **Good to know**: If you prefer to return a 308 (Permanent) HTTP redirect instead of 307 (Temporary), you can use the [`permanentRedirect` function](/docs/app/api-reference/functions/permanentRedirect) instead.
+
+## Parameters
+
+The `redirect` function accepts two arguments:
+
+```js
+redirect(path, type)
+```
+
+| Parameter | Type                                                          | Description                                                 |
+| --------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `path`    | `string`                                                      | The URL to redirect to. Can be a relative or absolute path. |
+| `type`    | `'replace'` (default) or `'push'` (default in Server Actions) | The type of redirect to perform.                            |
+
+By default, `redirect` will use `push` (adding a new entry to the browser history stack) in [Server Actions](/docs/app/building-your-application/data-fetching/forms-and-mutations) and `replace` (replacing the current URL in the browser history stack) everywhere else. You can override this behavior by specifying the `type` parameter.
+
+The `type` parameter has no effect when used in Server Components.
+
+## Returns
+
+`redirect` does not return any value.
+
+## Example
+
+Invoking the `redirect()` function throws a `NEXT_REDIRECT` error and terminates rendering of the route segment in which it was thrown.
+
+> **Good to know**: If you need to programmatically redirect the user after a certain event in a Client Component, you can use the [`useRouter`](/docs/app/api-reference/functions/use-router) hook.
+
+```jsx filename="app/team/[id]/page.js"
+import { redirect } from 'next/navigation'
+
+async function fetchTeam(id) {
+  const res = await fetch('https://...')
+  if (!res.ok) return undefined
+  return res.json()
+}
+
+export default async function Profile({ params }) {
+  const team = await fetchTeam(params.id)
+  if (!team) {
+    redirect('/login')
+  }
+
+  // ...
+}
+```
+
+> **Good to know**: `redirect` does not require you to use `return redirect()` as it uses the TypeScript [`never`](https://www.typescriptlang.org/docs/handbook/2/functions.html#never) type.
+
+| Version   | Changes                |
+| --------- | ---------------------- |
+| `v13.0.0` | `redirect` introduced. |
+
+
+## revalidatePath
+
+
+---
+title: revalidatePath
+description: API Reference for the revalidatePath function.
+---
+
+`revalidatePath` allows you to purge [cached data](/docs/app/building-your-application/caching) on-demand for a specific path.
+
+> **Good to know**:
+>
+> - `revalidatePath` is available in both [Node.js and Edge runtimes](/docs/app/building-your-application/rendering/edge-and-nodejs-runtimes).
+> - `revalidatePath` only invalidates the cache when the included path is next visited. This means calling `revalidatePath` with a dynamic route segment will not immediately trigger many revalidations at once. The invalidation only happens when the path is next visited.
+
+## Parameters
+
+```tsx
+revalidatePath(path: string, type?: 'page' | 'layout'): void;
+```
+
+- `path`: Either a string representing the filesystem path associated with the data you want to revalidate (for example, `/product/[slug]/page`), or the literal route segment (for example, `/product/123`). Must be less than 1024 characters.
+- `type`: (optional) `'page'` or `'layout'` string to change the type of path to revalidate.
+
+## Returns
+
+`revalidatePath` does not return any value.
+
+## Examples
+
+### Revalidating A Specific URL
+
+```ts
+import { revalidatePath } from 'next/cache'
+revalidatePath('/blog/post-1')
+```
+
+This will revalidate one specific URL on the next page visit.
+
+### Revalidating A Page Path
+
+```ts
+import { revalidatePath } from 'next/cache'
+revalidatePath('/blog/[slug]', 'page')
+// or with route groups
+revalidatePath('/(main)/post/[slug]', 'page')
+```
+
+This will revalidate any URL that matches the provided `page` file on the next page visit. This will _not_ invalidate pages beneath the specific page. For example, `/blog/[slug]` won't invalidate `/blog/[slug]/[author]`.
+
+### Revalidating A Layout Path
+
+```ts
+import { revalidatePath } from 'next/cache'
+revalidatePath('/blog/[slug]', 'layout')
+// or with route groups
+revalidatePath('/(main)/post/[slug]', 'layout')
+```
+
+This will revalidate any URL that matches the provided `layout` file on the next page visit. This will cause pages beneath with the same layout to revalidate on the next visit. For example, in the above case, `/blog/[slug]/[another]` would also revalidate on the next visit.
+
+### Revalidating All Data
+
+```ts
+import { revalidatePath } from 'next/cache'
+
+revalidatePath('/', 'layout')
+```
+
+This will purge the Client-side Router Cache, and revalidate the Data Cache on the next page visit.
+
+### Server Action
+
+```ts filename="app/actions.ts" switcher
+'use server'
+
+import { revalidatePath } from 'next/cache'
+
+export default async function submit() {
+  await submitForm()
+  revalidatePath('/')
+}
+```
+
+### Route Handler
+
+```ts filename="app/api/revalidate/route.ts" switcher
+import { revalidatePath } from 'next/cache'
+import { NextRequest } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  const path = request.nextUrl.searchParams.get('path')
+
+  if (path) {
+    revalidatePath(path)
+    return Response.json({ revalidated: true, now: Date.now() })
+  }
+
+  return Response.json({
+    revalidated: false,
+    now: Date.now(),
+    message: 'Missing path to revalidate',
+  })
+}
+```
+
+```js filename="app/api/revalidate/route.js" switcher
+import { revalidatePath } from 'next/cache'
+
+export async function GET(request) {
+  const path = request.nextUrl.searchParams.get('path')
+
+  if (path) {
+    revalidatePath(path)
+    return Response.json({ revalidated: true, now: Date.now() })
+  }
+
+  return Response.json({
+    revalidated: false,
+    now: Date.now(),
+    message: 'Missing path to revalidate',
+  })
+}
+```
+
+
+## revalidateTag
+
+
+---
+title: revalidateTag
+description: API Reference for the revalidateTag function.
+---
+
+`revalidateTag` allows you to purge [cached data](/docs/app/building-your-application/caching) on-demand for a specific cache tag.
+
+> **Good to know**:
+>
+> - `revalidateTag` is available in both [Node.js and Edge runtimes](/docs/app/building-your-application/rendering/edge-and-nodejs-runtimes).
+> - `revalidateTag` only invalidates the cache when the path is next visited. This means calling `revalidateTag` with a dynamic route segment will not immediately trigger many revalidations at once. The invalidation only happens when the path is next visited.
+
+## Parameters
+
+```tsx
+revalidateTag(tag: string): void;
+```
+
+- `tag`: A string representing the cache tag associated with the data you want to revalidate. Must be less than or equal to 256 characters.
+
+You can add tags to `fetch` as follows:
+
+```tsx
+fetch(url, { next: { tags: [...] } });
+```
+
+## Returns
+
+`revalidateTag` does not return any value.
+
+## Examples
+
+### Server Action
+
+```ts filename="app/actions.ts" switcher
+'use server'
+
+import { revalidateTag } from 'next/cache'
+
+export default async function submit() {
+  await addPost()
+  revalidateTag('posts')
+}
+```
+
+### Route Handler
+
+```ts filename="app/api/revalidate/route.ts" switcher
+import { NextRequest } from 'next/server'
+import { revalidateTag } from 'next/cache'
+
+export async function GET(request: NextRequest) {
+  const tag = request.nextUrl.searchParams.get('tag')
+  revalidateTag(tag)
+  return Response.json({ revalidated: true, now: Date.now() })
+}
+```
+
+```js filename="app/api/revalidate/route.js" switcher
+import { revalidateTag } from 'next/cache'
+
+export async function GET(request) {
+  const tag = request.nextUrl.searchParams.get('tag')
+  revalidateTag(tag)
+  return Response.json({ revalidated: true, now: Date.now() })
+}
+```
+
+
+## server-actions
+
+
+---
+title: Server Actions
+nav_title: Server Actions
+description: API Reference for Next.js Server Actions.
+related:
+  title: Next Steps
+  description: For more information on what to do next, we recommend the following sections
+  links:
+    - app/building-your-application/data-fetching/forms-and-mutations
+---
+
+{/* TODO: This page will need to link back to React docs mentioned at the bottom */}
+
+Next.js integrates with React Actions to provide a built-in solution for [server mutations](/docs/app/building-your-application/data-fetching/forms-and-mutations).
+
+## Convention
+
+Server Actions can be defined in two places:
+
+- Inside the component that uses it (Server Components only).
+- In a separate file (Client and Server Components), for reusability. You can define multiple Server Actions in a single file.
+
+### With Server Components
+
+Create a Server Action by defining an asynchronous function with the [`"use server"`](https://react.dev/reference/react/use-server) directive at the top of the function body. `"use server"` ensures this function is only ever executed on the server.
+
+This function should have [serializable arguments](https://developer.mozilla.org/docs/Glossary/Serialization) and a [serializable return value](https://developer.mozilla.org/docs/Glossary/Serialization).
+
+```jsx filename="app/page.js" highlight={2}
+export default function ServerComponent() {
+  async function myAction() {
+    'use server'
+    // ...
+  }
+}
+```
+
+### With Client Components
+
+#### Import
+
+Create your Server Action in a separate file with the `"use server"` directive at the top of the file. Then, import the Server Action into your Client Component:
+
+```js filename="app/actions.js" highlight={1}
+'use server'
+
+export async function myAction() {
+  // ...
+}
+```
+
+```jsx filename="app/client-component.jsx" highlight={1}
+'use client'
+
+import { myAction } from './actions'
+
+export default function ClientComponent() {
+  return (
+    <form action={myAction}>
+      <button type="submit">Add to Cart</button>
+    </form>
+  )
+}
+```
+
+> **Good to know**: When using a top-level `"use server"` directive, all exports below will be considered Server Actions. You can have multiple Server Actions in a single file.
+
+#### Props
+
+In some cases, you might want to pass down a Server Action to a Client Component as a prop.
+
+```jsx
+<ClientComponent myAction={updateItem} />
+```
+
+```jsx filename="app/client-component.jsx"
+'use client'
+
+export default function ClientComponent({ myAction }) {
+  return (
+    <form action={myAction}>
+      <input type="text" name="name" />
+      <button type="submit">Update Item</button>
+    </form>
+  )
+}
+```
+
+### Binding Arguments
+
+You can bind arguments to a Server Action using the `bind` method. This allows you to create a new Server Action with some arguments already bound. This is beneficial when you want to pass extra arguments to a Server Action.
+
+```jsx filename="app/client-component.jsx" highlight={6}
+'use client'
+
+import { updateUser } from './actions'
+
+export function UserProfile({ userId }) {
+  const updateUserWithId = updateUser.bind(null, userId)
+
+  return (
+    <form action={updateUserWithId}>
+      <input type="text" name="name" />
+      <button type="submit">Update User Name</button>
+    </form>
+  )
+}
+```
+
+And then, the `updateUser` Server Action will always receive the `userId` argument, in addition to the form data:
+
+```js filename="app/actions.js"
+'use server'
+
+export async function updateUser(userId, formData) {
+  // ...
+}
+```
+
+> **Good to know**: `.bind` of a Server Action works in both Server and Client Components. It also supports [Progressive Enhancement](#progressive-enhancement).
+
+## Invocation
+
+You can invoke Server Actions using the following methods:
+
+- Using `action`: React's `action` prop allows invoking a Server Action on a `<form>` element.
+- Using `formAction`: React's `formAction` prop allows handling `<button>`, `<input type="submit">`, and `<input type="image">` elements in a `<form>`.
+- Custom Invocation with `startTransition`: Invoke Server Actions without using `action` or `formAction` by using `startTransition`. This method **disables [Progressive Enhancement](#progressive-enhancement)**.
+
+## Progressive Enhancement
+
+Progressive enhancement allows a `<form>` to function properly without JavaScript, or with JavaScript disabled. This allows users to interact with the form and submit data even if the JavaScript for the form hasn't been loaded yet or if it fails to load.
+
+React Actions (both server and client) support progressive enhancement, using one of two strategies:
+
+- If a **Server Action** is passed directly to a `<form>`, the form is interactive **even if JavaScript is disabled**.
+- If a **Client Action** is passed to a `<form>`, the form is still interactive, but the action will be placed in a queue until the form has hydrated. React prioritizes the action, so it still happens quickly.
+
+In both cases, the form is interactive before hydration occurs. Although Server Actions have the additional benefit of not relying on client JavaScript, you can still compose additional behavior with Client Actions where desired without sacrificing interactivity.
+
+## Size Limitation
+
+By default, the maximum size of the request body sent to a Server Action is 1MB, to prevent the consumption of excessive server resources in parsing large amounts of data.
+
+However, you can configure this limit using the `serverActions.bodySizeLimit` option. It can take the number of bytes or any string format supported by bytes, for example `1000`, `'500kb'` or `'3mb'`.
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+}
+```
+
+## Additional Resources
+
+The following React API pages are currently being documented:
+
+- [`"use server"`](https://react.dev/reference/react/use-server)
+- [`useFormStatus`](https://react.dev/reference/react-dom/hooks/useFormStatus)
+- [`useFormState`](https://react.dev/reference/react-dom/hooks/useFormState)
+- [`useOptimistic`](https://react.dev/reference/react/useOptimistic)
+- [`<form>`](https://react.dev/reference/react-dom/components/form)
+
+
+## unstable_cache
+
+
+---
+title: unstable_cache
+description: API Reference for the unstable_cache function.
+---
+
+`unstable_cache` allows you to cache the results of expensive operations, like database queries, and reuse them across multiple requests.
+
+```jsx
+import { getUser } from './data';
+import { unstable_cache } from 'next/cache';
+
+const getCachedUser = unstable_cache(
+  async (id) => getUser(id),
+  ['my-app-user']
+);
+
+export default async function Component({ userID }) {
+  const user = await getCachedUser(userID);
+  ...
+}
+```
+
+> **Warning**: This API is unstable and may change in the future. We will provide migration documentation and codemods, if needed, as this API stabilizes.
+
+## Parameters
+
+```jsx
+const data = unstable_cache(fetchData, keyParts, options)()
+```
+
+- `fetchData`: This is an asynchronous function that fetches the data you want to cache. It must be a function that returns a `Promise`.
+- `keyParts`: This is an array that identifies the cached key. It must contain globally unique values that together identify the key of the data being cached. The cache key also includes the arguments passed to the function.
+- `options`: This is an object that controls how the cache behaves. It can contain the following properties:
+  - `tags`: An array of tags that can be used to control cache invalidation.
+  - `revalidate`: The number of seconds after which the cache should be revalidated.
+
+## Returns
+
+`unstable_cache` returns a function that when invoked, returns a Promise that resolves to the cached data. If the data is not in the cache, the provided function will be invoked, and its result will be cached and returned.
+
+
+## unstable_noStore
+
+
+---
+title: unstable_noStore
+description: API Reference for the unstable_noStore function.
+---
+
+`unstable_noStore` can be used to declaratively opt out of static rendering and indicate a particular component should not be cached.
+
+```jsx
+import { unstable_noStore as noStore } from 'next/cache';
+
+export default async function Component() {
+  noStore();
+  const result = await db.query(...);
+  ...
+}
+```
+
+> **Good to know**:
+>
+> - `unstable_noStore` is equivalent to `cache: 'no-store'` on a `fetch`
+> - `unstable_noStore` is preferred over `export const dynamic = 'force-dynamic'` as it is more granular and can be used on a per-component basis
+
+- Using `unstable_noStore` inside [`unstable_cache`](/docs/app/api-reference/functions/unstable_cache) will not opt out of static generation. Instead, it will defer to the cache configuration to determine whether to cache the result or not.
+
+## Usage
+
+If you prefer not to pass additional options to `fetch`, like `cache: 'no-store'` or `next: { revalidate: 0 }`, you can use `noStore()` as a replacement for all of these use cases.
+
+```jsx
+import { unstable_noStore as noStore } from 'next/cache';
+
+export default async function Component() {
+  noStore();
+  const result = await db.query(...);
+  ...
+}
+```
+
+## Version History
+
+| Version   | Changes                        |
+| --------- | ------------------------------ |
+| `v14.0.0` | `unstable_noStore` introduced. |
+
+
+## use-params
+
+
+---
+title: useParams
+description: API Reference for the useParams hook.
+---
+
+`useParams` is a **Client Component** hook that lets you read a route's [dynamic params](/docs/app/building-your-application/routing/dynamic-routes) filled in by the current URL.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { useParams } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const params = useParams()
+
+  // Route -> /shop/[tag]/[item]
+  // URL -> /shop/shoes/nike-air-max-97
+  // `params` -> { tag: 'shoes', item: 'nike-air-max-97' }
+  console.log(params)
+
+  return <></>
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { useParams } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const params = useParams()
+
+  // Route -> /shop/[tag]/[item]
+  // URL -> /shop/shoes/nike-air-max-97
+  // `params` -> { tag: 'shoes', item: 'nike-air-max-97' }
+  console.log(params)
+
+  return <></>
+}
+```
+
+## Parameters
+
+```tsx
+const params = useParams()
+```
+
+`useParams` does not take any parameters.
+
+## Returns
+
+`useParams` returns an object containing the current route's filled in [dynamic parameters](/docs/app/building-your-application/routing/dynamic-routes).
+
+- Each property in the object is an active dynamic segment.
+- The properties name is the segment's name, and the properties value is what the segment is filled in with.
+- The properties value will either be a `string` or array of `string`'s depending on the [type of dynamic segment](/docs/app/building-your-application/routing/dynamic-routes).
+- If the route contains no dynamic parameters, `useParams` returns an empty object.
+- If used in `pages`, `useParams` will return `null`.
+
+For example:
+
+| Route                           | URL         | `useParams()`             |
+| ------------------------------- | ----------- | ------------------------- |
+| `app/shop/page.js`              | `/shop`     | `null`                    |
+| `app/shop/[slug]/page.js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `app/shop/[tag]/[item]/page.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `app/shop/[...slug]/page.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+## Version History
+
+| Version   | Changes                 |
+| --------- | ----------------------- |
+| `v13.3.0` | `useParams` introduced. |
+
+
+## use-pathname
+
+
+---
+title: usePathname
+description: API Reference for the usePathname hook.
+---
+
+`usePathname` is a **Client Component** hook that lets you read the current URL's **pathname**.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { usePathname } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const pathname = usePathname()
+  return <p>Current pathname: {pathname}</p>
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { usePathname } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const pathname = usePathname()
+  return <p>Current pathname: {pathname}</p>
+}
+```
+
+`usePathname` intentionally requires using a [Client Component](/docs/app/building-your-application/rendering/client-components). It's important to note Client Components are not a de-optimization. They are an integral part of the [Server Components](/docs/app/building-your-application/rendering/server-components) architecture.
+
+For example, a Client Component with `usePathname` will be rendered into HTML on the initial page load. When navigating to a new route, this component does not need to be re-fetched. Instead, the component is downloaded once (in the client JavaScript bundle), and re-renders based on the current state.
+
+> **Good to know**:
+>
+> - Reading the current URL from a [Server Component](/docs/app/building-your-application/rendering/server-components) is not supported. This design is intentional to support layout state being preserved across page navigations.
+> - Compatibility mode:
+>   - `usePathname` can return `null` when a [fallback route](/docs/pages/api-reference/functions/get-static-paths#fallback-true) is being rendered or when a `pages` directory page has been [automatically statically optimized](/docs/pages/building-your-application/rendering/automatic-static-optimization) by Next.js and the router is not ready.
+>   - Next.js will automatically update your types if it detects both an `app` and `pages` directory in your project.
+
+## Parameters
+
+```tsx
+const pathname = usePathname()
+```
+
+`usePathname` does not take any parameters.
+
+## Returns
+
+`usePathname` returns a string of the current URL's pathname. For example:
+
+| URL                 | Returned value        |
+| ------------------- | --------------------- |
+| `/`                 | `'/'`                 |
+| `/dashboard`        | `'/dashboard'`        |
+| `/dashboard?v=2`    | `'/dashboard'`        |
+| `/blog/hello-world` | `'/blog/hello-world'` |
+
+## Examples
+
+### Do something in response to a route change
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { usePathname, useSearchParams } from 'next/navigation'
+
+function ExampleClientComponent() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    // Do something here...
+  }, [pathname, searchParams])
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { usePathname, useSearchParams } from 'next/navigation'
+
+function ExampleClientComponent() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    // Do something here...
+  }, [pathname, searchParams])
+}
+```
+
+| Version   | Changes                   |
+| --------- | ------------------------- |
+| `v13.0.0` | `usePathname` introduced. |
+
+
+## use-report-web-vitals
+
+
+---
+title: useReportWebVitals
+description: API Reference for the useReportWebVitals function.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+The `useReportWebVitals` hook allows you to report [Core Web Vitals](https://web.dev/vitals/), and can be used in combination with your analytics service.
+
+<PagesOnly>
+
+```jsx filename="pages/_app.js"
+import { useReportWebVitals } from 'next/web-vitals'
+
+function MyApp({ Component, pageProps }) {
+  useReportWebVitals((metric) => {
+    console.log(metric)
+  })
+
+  return <Component {...pageProps} />
+}
+```
+
+</PagesOnly>
+
+<AppOnly>
+
+```jsx filename="app/_components/web-vitals.js"
+'use client'
+
+import { useReportWebVitals } from 'next/web-vitals'
+
+export function WebVitals() {
+  useReportWebVitals((metric) => {
+    console.log(metric)
+  })
+}
+```
+
+```jsx filename="app/layout.js"
+import { WebVitals } from './_components/web-vitals'
+
+export default function Layout({ children }) {
+  return (
+    <html>
+      <body>
+        <WebVitals />
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+> Since the `useReportWebVitals` hook requires the `"use client"` directive, the most performant approach is to create a separate component that the root layout imports. This confines the client boundary exclusively to the `WebVitals` component.
+
+</AppOnly>
+
+## useReportWebVitals
+
+The `metric` object passed as the hook's argument consists of a number of properties:
+
+- `id`: Unique identifier for the metric in the context of the current page load
+- `name`: The name of the performance metric. Possible values include names of [Web Vitals](#web-vitals) metrics (TTFB, FCP, LCP, FID, CLS) specific to a web application.
+- `delta`: The difference between the current value and the previous value of the metric. The value is typically in milliseconds and represents the change in the metric's value over time.
+- `entries`: An array of [Performance Entries](https://developer.mozilla.org/docs/Web/API/PerformanceEntry) associated with the metric. These entries provide detailed information about the performance events related to the metric.
+- `navigationType`: Indicates the [type of navigation](https://developer.mozilla.org/docs/Web/API/PerformanceNavigationTiming/type) that triggered the metric collection. Possible values include `"navigate"`, `"reload"`, `"back_forward"`, and `"prerender"`.
+- `rating`: A qualitative rating of the metric value, providing an assessment of the performance. Possible values are `"good"`, `"needs-improvement"`, and `"poor"`. The rating is typically determined by comparing the metric value against predefined thresholds that indicate acceptable or suboptimal performance.
+- `value`: The actual value or duration of the performance entry, typically in milliseconds. The value provides a quantitative measure of the performance aspect being tracked by the metric. The source of the value depends on the specific metric being measured and can come from various [Performance API](https://developer.mozilla.org/docs/Web/API/Performance_API)s.
+
+## Web Vitals
+
+[Web Vitals](https://web.dev/vitals/) are a set of useful metrics that aim to capture the user
+experience of a web page. The following web vitals are all included:
+
+- [Time to First Byte](https://developer.mozilla.org/docs/Glossary/Time_to_first_byte) (TTFB)
+- [First Contentful Paint](https://developer.mozilla.org/docs/Glossary/First_contentful_paint) (FCP)
+- [Largest Contentful Paint](https://web.dev/lcp/) (LCP)
+- [First Input Delay](https://web.dev/fid/) (FID)
+- [Cumulative Layout Shift](https://web.dev/cls/) (CLS)
+- [Interaction to Next Paint](https://web.dev/inp/) (INP)
+
+You can handle all the results of these metrics using the `name` property.
+
+<PagesOnly>
+
+```jsx filename="pages/_app.js"
+import { useReportWebVitals } from 'next/web-vitals'
+
+function MyApp({ Component, pageProps }) {
+  useReportWebVitals((metric) => {
+    switch (metric.name) {
+      case 'FCP': {
+        // handle FCP results
+      }
+      case 'LCP': {
+        // handle LCP results
+      }
+      // ...
+    }
+  })
+
+  return <Component {...pageProps} />
+}
+```
+
+</PagesOnly>
+
+<AppOnly>
+
+```tsx filename="app/components/web-vitals.tsx" switcher
+'use client'
+
+import { useReportWebVitals } from 'next/web-vitals'
+
+export function WebVitals() {
+  useReportWebVitals((metric) => {
+    switch (metric.name) {
+      case 'FCP': {
+        // handle FCP results
+      }
+      case 'LCP': {
+        // handle LCP results
+      }
+      // ...
+    }
+  })
+}
+```
+
+```jsx filename="app/components/web-vitals.js" switcher
+'use client'
+
+import { useReportWebVitals } from 'next/web-vitals'
+
+export function WebVitals() {
+  useReportWebVitals((metric) => {
+    switch (metric.name) {
+      case 'FCP': {
+        // handle FCP results
+      }
+      case 'LCP': {
+        // handle LCP results
+      }
+      // ...
+    }
+  })
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+## Custom Metrics
+
+In addition to the core metrics listed above, there are some additional custom metrics that
+measure the time it takes for the page to hydrate and render:
+
+- `Next.js-hydration`: Length of time it takes for the page to start and finish hydrating (in ms)
+- `Next.js-route-change-to-render`: Length of time it takes for a page to start rendering after a
+  route change (in ms)
+- `Next.js-render`: Length of time it takes for a page to finish render after a route change (in ms)
+
+You can handle all the results of these metrics separately:
+
+```js
+export function reportWebVitals(metric) {
+  switch (metric.name) {
+    case 'Next.js-hydration':
+      // handle hydration results
+      break
+    case 'Next.js-route-change-to-render':
+      // handle route-change to render results
+      break
+    case 'Next.js-render':
+      // handle render results
+      break
+    default:
+      break
+  }
+}
+```
+
+These metrics work in all browsers that support the [User Timing API](https://caniuse.com/#feat=user-timing).
+
+</PagesOnly>
+
+## Usage on Vercel
+
+[Vercel Speed Insights](https://vercel.com/docs/concepts/speed-insights) are automatically configured on Vercel deployments, and don't require the use of `useReportWebVitals`. This hook is useful in local development, or if you're using a different analytics service.
+
+## Sending results to external systems
+
+You can send results to any endpoint to measure and track
+real user performance on your site. For example:
+
+```js
+useReportWebVitals((metric) => {
+  const body = JSON.stringify(metric)
+  const url = 'https://example.com/analytics'
+
+  // Use `navigator.sendBeacon()` if available, falling back to `fetch()`.
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(url, body)
+  } else {
+    fetch(url, { body, method: 'POST', keepalive: true })
+  }
+})
+```
+
+> **Good to know**: If you use [Google Analytics](https://analytics.google.com/analytics/web/), using the
+> `id` value can allow you to construct metric distributions manually (to calculate percentiles,
+> etc.)
+
+> ```js
+> useReportWebVitals(metric => {
+>   // Use `window.gtag` if you initialized Google Analytics as this example:
+>   // https://github.com/vercel/next.js/blob/canary/examples/with-google-analytics/pages/_app.js
+>   window.gtag('event', metric.name, {
+>     value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value), // values must be integers
+>     event_label: metric.id, // id unique to current page load
+>     non_interaction: true, // avoids affecting bounce rate.
+>   });
+> }
+> ```
+>
+> Read more about [sending results to Google Analytics](https://github.com/GoogleChrome/web-vitals#send-the-results-to-google-analytics).
+
+
+## use-router
+
+
+---
+title: useRouter
+description: API reference for the useRouter hook.
+---
+
+The `useRouter` hook allows you to programmatically change routes inside [Client Components](/docs/app/building-your-application/rendering/client-components).
+
+> **Recommendation:** Use the [`<Link>` component](/docs/app/building-your-application/routing/linking-and-navigating#link-component) for navigation unless you have a specific requirement for using `useRouter`.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button type="button" onClick={() => router.push('/dashboard')}>
+      Dashboard
+    </button>
+  )
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button type="button" onClick={() => router.push('/dashboard')}>
+      Dashboard
+    </button>
+  )
+}
+```
+
+## `useRouter()`
+
+- `router.push(href: string, { scroll: boolean })`: Perform a client-side navigation to the provided route. Adds a new entry into the [browser’s history](https://developer.mozilla.org/docs/Web/API/History_API) stack.
+- `router.replace(href: string, { scroll: boolean })`: Perform a client-side navigation to the provided route without adding a new entry into the [browser’s history stack](https://developer.mozilla.org/docs/Web/API/History_API).
+- `router.refresh()`: Refresh the current route. Making a new request to the server, re-fetching data requests, and re-rendering Server Components. The client will merge the updated React Server Component payload without losing unaffected client-side React (e.g. `useState`) or browser state (e.g. scroll position).
+- `router.prefetch(href: string)`: [Prefetch](/docs/app/building-your-application/routing/linking-and-navigating#1-prefetching) the provided route for faster client-side transitions.
+- `router.back()`: Navigate back to the previous route in the browser’s history stack.
+- `router.forward()`: Navigate forwards to the next page in the browser’s history stack.
+
+> **Good to know**:
+>
+> - The `<Link>` component automatically prefetch routes as they become visible in the viewport.
+> - `refresh()` could re-produce the same result if fetch requests are cached. Other dynamic functions like `cookies` and `headers` could also change the response.
+
+### Migrating from `next/router`
+
+- The `useRouter` hook should be imported from `next/navigation` and not `next/router` when using the App Router
+- The `pathname` string has been removed and is replaced by [`usePathname()`](/docs/app/api-reference/functions/use-pathname)
+- The `query` object has been removed and is replaced by [`useSearchParams()`](/docs/app/api-reference/functions/use-search-params)
+- `router.events` has been replaced. [See below.](#router-events)
+
+[View the full migration guide](/docs/app/building-your-application/upgrading/app-router-migration).
+
+## Examples
+
+### Router events
+
+You can listen for page changes by composing other Client Component hooks like `usePathname` and `useSearchParams`.
+
+```jsx filename="app/components/navigation-events.js"
+'use client'
+
+import { useEffect } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+
+export function NavigationEvents() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const url = `${pathname}?${searchParams}`
+    console.log(url)
+    // You can now use the current URL
+    // ...
+  }, [pathname, searchParams])
+
+  return null
+}
+```
+
+Which can be imported into a layout.
+
+```jsx filename="app/layout.js" highlight={2,10-12}
+import { Suspense } from 'react'
+import { NavigationEvents } from './components/navigation-events'
+
+export default function Layout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+
+        <Suspense fallback={null}>
+          <NavigationEvents />
+        </Suspense>
+      </body>
+    </html>
+  )
+}
+```
+
+> **Good to know**: `<NavigationEvents>` is wrapped in a [`Suspense` boundary](/docs/app/building-your-application/routing/loading-ui-and-streaming#example) because[`useSearchParams()`](/docs/app/api-reference/functions/use-search-params) causes client-side rendering up to the closest `Suspense` boundary during [static rendering](/docs/app/building-your-application/rendering/server-components#static-rendering-default). [Learn more](/docs/app/api-reference/functions/use-search-params#behavior).
+
+### Disabling scroll restoration
+
+By default, Next.js will scroll to the top of the page when navigating to a new route. You can disable this behavior by passing `scroll: false` to `router.push()` or `router.replace()`.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push('/dashboard', { scroll: false })}
+    >
+      Dashboard
+    </button>
+  )
+}
+```
+
+```jsx filename="app/example-client-component.jsx" switcher
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function Page() {
+  const router = useRouter()
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push('/dashboard', { scroll: false })}
+    >
+      Dashboard
+    </button>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                                        |
+| --------- | ---------------------------------------------- |
+| `v13.0.0` | `useRouter` from `next/navigation` introduced. |
+
+
+## use-search-params
+
+
+---
+title: useSearchParams
+description: API Reference for the useSearchParams hook.
+---
+
+`useSearchParams` is a **Client Component** hook that lets you read the current URL's **query string**.
+
+`useSearchParams` returns a **read-only** version of the [`URLSearchParams`](https://developer.mozilla.org/docs/Web/API/URLSearchParams) interface.
+
+```tsx filename="app/dashboard/search-bar.tsx" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // URL -> `/dashboard?search=my-project`
+  // `search` -> 'my-project'
+  return <>Search: {search}</>
+}
+```
+
+```jsx filename="app/dashboard/search-bar.js" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // URL -> `/dashboard?search=my-project`
+  // `search` -> 'my-project'
+  return <>Search: {search}</>
+}
+```
+
+## Parameters
+
+```tsx
+const searchParams = useSearchParams()
+```
+
+`useSearchParams` does not take any parameters.
+
+## Returns
+
+`useSearchParams` returns a **read-only** version of the [`URLSearchParams`](https://developer.mozilla.org/docs/Web/API/URLSearchParams) interface, which includes utility methods for reading the URL's query string:
+
+- [`URLSearchParams.get()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/get): Returns the first value associated with the search parameter. For example:
+
+  | URL                  | `searchParams.get("a")`                                                                                         |
+  | -------------------- | --------------------------------------------------------------------------------------------------------------- |
+  | `/dashboard?a=1`     | `'1'`                                                                                                           |
+  | `/dashboard?a=`      | `''`                                                                                                            |
+  | `/dashboard?b=3`     | `null`                                                                                                          |
+  | `/dashboard?a=1&a=2` | `'1'` _- use [`getAll()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/getAll) to get all values_ |
+
+- [`URLSearchParams.has()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/has): Returns a boolean value indicating if the given parameter exists. For example:
+
+  | URL              | `searchParams.has("a")` |
+  | ---------------- | ----------------------- |
+  | `/dashboard?a=1` | `true`                  |
+  | `/dashboard?b=3` | `false`                 |
+
+- Learn more about other **read-only** methods of [`URLSearchParams`](https://developer.mozilla.org/docs/Web/API/URLSearchParams), including the [`getAll()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/getAll), [`keys()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/keys), [`values()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/values), [`entries()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/entries), [`forEach()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/forEach), and [`toString()`](https://developer.mozilla.org/docs/Web/API/URLSearchParams/toString).
+
+> **Good to know**:
+>
+> - `useSearchParams` is a [Client Component](/docs/app/building-your-application/rendering/client-components) hook and is **not supported** in [Server Components](/docs/app/building-your-application/rendering/server-components) to prevent stale values during [partial rendering](/docs/app/building-your-application/routing/linking-and-navigating#3-partial-rendering).
+> - If an application includes the `/pages` directory, `useSearchParams` will return `ReadonlyURLSearchParams | null`. The `null` value is for compatibility during migration since search params cannot be known during pre-rendering of a page that doesn't use `getServerSideProps`
+
+## Behavior
+
+### Static Rendering
+
+If a route is [statically rendered](/docs/app/building-your-application/rendering/server-components#static-rendering-default), calling `useSearchParams()` will cause the tree up to the closest [`Suspense` boundary](/docs/app/building-your-application/routing/loading-ui-and-streaming#example) to be client-side rendered.
+
+This allows a part of the page to be statically rendered while the dynamic part that uses `searchParams` is client-side rendered.
+
+You can reduce the portion of the route that is client-side rendered by wrapping the component that uses `useSearchParams` in a `Suspense` boundary. For example:
+
+```tsx filename="app/dashboard/search-bar.tsx" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // This will not be logged on the server when using static rendering
+  console.log(search)
+
+  return <>Search: {search}</>
+}
+```
+
+```jsx filename="app/dashboard/search-bar.js" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // This will not be logged on the server when using static rendering
+  console.log(search)
+
+  return <>Search: {search}</>
+}
+```
+
+```tsx filename="app/dashboard/page.tsx" switcher
+import { Suspense } from 'react'
+import SearchBar from './search-bar'
+
+// This component passed as a fallback to the Suspense boundary
+// will be rendered in place of the search bar in the initial HTML.
+// When the value is available during React hydration the fallback
+// will be replaced with the `<SearchBar>` component.
+function SearchBarFallback() {
+  return <>placeholder</>
+}
+
+export default function Page() {
+  return (
+    <>
+      <nav>
+        <Suspense fallback={<SearchBarFallback />}>
+          <SearchBar />
+        </Suspense>
+      </nav>
+      <h1>Dashboard</h1>
+    </>
+  )
+}
+```
+
+```jsx filename="app/dashboard/page.js" switcher
+import { Suspense } from 'react'
+import SearchBar from './search-bar'
+
+// This component passed as a fallback to the Suspense boundary
+// will be rendered in place of the search bar in the initial HTML.
+// When the value is available during React hydration the fallback
+// will be replaced with the `<SearchBar>` component.
+function SearchBarFallback() {
+  return <>placeholder</>
+}
+
+export default function Page() {
+  return (
+    <>
+      <nav>
+        <Suspense fallback={<SearchBarFallback />}>
+          <SearchBar />
+        </Suspense>
+      </nav>
+      <h1>Dashboard</h1>
+    </>
+  )
+}
+```
+
+### Dynamic Rendering
+
+If a route is [dynamically rendered](/docs/app/building-your-application/rendering/server-components#dynamic-rendering), `useSearchParams` will be available on the server during the initial server render of the Client Component.
+
+> **Good to know**: Setting the [`dynamic` route segment config option](/docs/app/api-reference/file-conventions/route-segment-config#dynamic) to `force-dynamic` can be used to force dynamic rendering.
+
+For example:
+
+```tsx filename="app/dashboard/search-bar.tsx" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // This will be logged on the server during the initial render
+  // and on the client on subsequent navigations.
+  console.log(search)
+
+  return <>Search: {search}</>
+}
+```
+
+```jsx filename="app/dashboard/search-bar.js" switcher
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+
+export default function SearchBar() {
+  const searchParams = useSearchParams()
+
+  const search = searchParams.get('search')
+
+  // This will be logged on the server during the initial render
+  // and on the client on subsequent navigations.
+  console.log(search)
+
+  return <>Search: {search}</>
+}
+```
+
+```tsx filename="app/dashboard/page.tsx" switcher
+import SearchBar from './search-bar'
+
+export const dynamic = 'force-dynamic'
+
+export default function Page() {
+  return (
+    <>
+      <nav>
+        <SearchBar />
+      </nav>
+      <h1>Dashboard</h1>
+    </>
+  )
+}
+```
+
+```jsx filename="app/dashboard/page.js" switcher
+import SearchBar from './search-bar'
+
+export const dynamic = 'force-dynamic'
+
+export default function Page() {
+  return (
+    <>
+      <nav>
+        <SearchBar />
+      </nav>
+      <h1>Dashboard</h1>
+    </>
+  )
+}
+```
+
+### Server Components
+
+#### Pages
+
+To access search params in [Pages](/docs/app/api-reference/file-conventions/page) (Server Components), use the [`searchParams`](/docs/app/api-reference/file-conventions/page#searchparams-optional) prop.
+
+#### Layouts
+
+Unlike Pages, [Layouts](/docs/app/api-reference/file-conventions/layout) (Server Components) **do not** receive the `searchParams` prop. This is because a shared layout is [not re-rendered during navigation](/docs/app/building-your-application/routing/linking-and-navigating#3-partial-rendering) which could lead to stale `searchParams` between navigations. View [detailed explanation](/docs/app/api-reference/file-conventions/layout#layouts-do-not-receive-searchparams).
+
+Instead, use the Page [`searchParams`](/docs/app/api-reference/file-conventions/page) prop or the [`useSearchParams`](/docs/app/api-reference/functions/use-search-params) hook in a Client Component, which is re-rendered on the client with the latest `searchParams`.
+
+## Examples
+
+### Updating `searchParams`
+
+You can use [`useRouter`](/docs/app/api-reference/functions/use-router) or [`Link`](/docs/app/api-reference/components/link) to set new `searchParams`. After a navigation is performed, the current [`page.js`](/docs/app/api-reference/file-conventions/page) will receive an updated [`searchParams` prop](/docs/app/api-reference/file-conventions/page#searchparams-optional).
+
+```tsx filename="app/example-client-component.tsx" switcher
+export default function ExampleClientComponent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()!
+
+  // Get a new searchParams string by merging the current
+  // searchParams with a provided key/value pair
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams)
+      params.set(name, value)
+
+      return params.toString()
+    },
+    [searchParams]
+  )
+
+  return (
+    <>
+      <p>Sort By</p>
+
+      {/* using useRouter */}
+      <button
+        onClick={() => {
+          // <pathname>?sort=asc
+          router.push(pathname + '?' + createQueryString('sort', 'asc'))
+        }}
+      >
+        ASC
+      </button>
+
+      {/* using <Link> */}
+      <Link
+        href={
+          // <pathname>?sort=desc
+          pathname + '?' + createQueryString('sort', 'desc')
+        }
+      >
+        DESC
+      </Link>
+    </>
+  )
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+export default function ExampleClientComponent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Get a new searchParams string by merging the current
+  // searchParams with a provided key/value pair
+  const createQueryString = useCallback(
+    (name, value) => {
+      const params = new URLSearchParams(searchParams)
+      params.set(name, value)
+
+      return params.toString()
+    },
+    [searchParams]
+  )
+
+  return (
+    <>
+      <p>Sort By</p>
+
+      {/* using useRouter */}
+      <button
+        onClick={() => {
+          // <pathname>?sort=asc
+          router.push(pathname + '?' + createQueryString('sort', 'asc'))
+        }}
+      >
+        ASC
+      </button>
+
+      {/* using <Link> */}
+      <Link
+        href={
+          // <pathname>?sort=desc
+          pathname + '?' + createQueryString('sort', 'desc')
+        }
+      >
+        DESC
+      </Link>
+    </>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                       |
+| --------- | ----------------------------- |
+| `v13.0.0` | `useSearchParams` introduced. |
+
+
+## use-selected-layout-segment
+
+
+---
+title: useSelectedLayoutSegment
+description: API Reference for the useSelectedLayoutSegment hook.
+---
+
+`useSelectedLayoutSegment` is a **Client Component** hook that lets you read the active route segment **one level below** the Layout it is called from.
+
+It is useful for navigation UI, such as tabs inside a parent layout that change style depending on the active child segment.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segment = useSelectedLayoutSegment()
+
+  return <p>Active segment: {segment}</p>
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segment = useSelectedLayoutSegment()
+
+  return <p>Active segment: {segment}</p>
+}
+```
+
+> **Good to know**:
+>
+> - Since `useSelectedLayoutSegment` is a [Client Component](/docs/app/building-your-application/rendering/client-components) hook, and Layouts are [Server Components](/docs/app/building-your-application/rendering/server-components) by default, `useSelectedLayoutSegment` is usually called via a Client Component that is imported into a Layout.
+> - `useSelectedLayoutSegment` only returns the segment one level down. To return all active segments, see [`useSelectedLayoutSegments`](/docs/app/api-reference/functions/use-selected-layout-segments)
+
+## Parameters
+
+```tsx
+const segment = useSelectedLayoutSegment(parallelRoutesKey?: string)
+```
+
+`useSelectedLayoutSegment` _optionally_ accepts a [`parallelRoutesKey`](/docs/app/building-your-application/routing/parallel-routes#useselectedlayoutsegments), which allows you to read the active route segment within that slot.
+
+## Returns
+
+`useSelectedLayoutSegment` returns a string of the active segment or `null` if one doesn't exist.
+
+For example, given the Layouts and URLs below, the returned segment would be:
+
+| Layout                    | Visited URL                    | Returned Segment |
+| ------------------------- | ------------------------------ | ---------------- |
+| `app/layout.js`           | `/`                            | `null`           |
+| `app/layout.js`           | `/dashboard`                   | `'dashboard'`    |
+| `app/dashboard/layout.js` | `/dashboard`                   | `null`           |
+| `app/dashboard/layout.js` | `/dashboard/settings`          | `'settings'`     |
+| `app/dashboard/layout.js` | `/dashboard/analytics`         | `'analytics'`    |
+| `app/dashboard/layout.js` | `/dashboard/analytics/monthly` | `'analytics'`    |
+
+## Examples
+
+### Creating an active link component
+
+You can use `useSelectedLayoutSegment` to create an active link component that changes style depending on the active segment. For example, a featured posts list in the sidebar of a blog:
+
+```tsx filename="app/blog/blog-nav-link.tsx" switcher
+'use client'
+
+import Link from 'next/link'
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+// This *client* component will be imported into a blog layout
+export default function BlogNavLink({
+  slug,
+  children,
+}: {
+  slug: string
+  children: React.ReactNode
+}) {
+  // Navigating to `/blog/hello-world` will return 'hello-world'
+  // for the selected layout segment
+  const segment = useSelectedLayoutSegment()
+  const isActive = slug === segment
+
+  return (
+    <Link
+      href={`/blog/${slug}`}
+      // Change style depending on whether the link is active
+      style={{ fontWeight: isActive ? 'bold' : 'normal' }}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+```jsx filename="app/blog/blog-nav-link.js" switcher
+'use client'
+
+import Link from 'next/link'
+import { useSelectedLayoutSegment } from 'next/navigation'
+
+// This *client* component will be imported into a blog layout
+export default function BlogNavLink({ slug, children }) {
+  // Navigating to `/blog/hello-world` will return 'hello-world'
+  // for the selected layout segment
+  const segment = useSelectedLayoutSegment()
+  const isActive = slug === segment
+
+  return (
+    <Link
+      href={`/blog/${slug}`}
+      // Change style depending on whether the link is active
+      style={{ fontWeight: isActive ? 'bold' : 'normal' }}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+```tsx filename="app/blog/layout.tsx" switcher
+// Import the Client Component into a parent Layout (Server Component)
+import { BlogNavLink } from './blog-nav-link'
+import getFeaturedPosts from './get-featured-posts'
+
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const featuredPosts = await getFeaturedPosts()
+  return (
+    <div>
+      {featuredPosts.map((post) => (
+        <div key={post.id}>
+          <BlogNavLink slug={post.slug}>{post.title}</BlogNavLink>
+        </div>
+      ))}
+      <div>{children}</div>
+    </div>
+  )
+}
+```
+
+```jsx filename="app/blog/layout.js" switcher
+// Import the Client Component into a parent Layout (Server Component)
+import { BlogNavLink } from './blog-nav-link'
+import getFeaturedPosts from './get-featured-posts'
+
+export default async function Layout({ children }) {
+  const featuredPosts = await getFeaturedPosts()
+  return (
+    <div>
+      {featuredPosts.map((post) => (
+        <div key={post.id}>
+          <BlogNavLink slug={post.slug}>{post.title}</BlogNavLink>
+        </div>
+      ))}
+      <div>{children}</div>
+    </div>
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                                |
+| --------- | -------------------------------------- |
+| `v13.0.0` | `useSelectedLayoutSegment` introduced. |
+
+
+## use-selected-layout-segments
+
+
+---
+title: useSelectedLayoutSegments
+description: API Reference for the useSelectedLayoutSegments hook.
+---
+
+`useSelectedLayoutSegments` is a **Client Component** hook that lets you read the active route segments **below** the Layout it is called from.
+
+It is useful for creating UI in parent Layouts that need knowledge of active child segments such as breadcrumbs.
+
+```tsx filename="app/example-client-component.tsx" switcher
+'use client'
+
+import { useSelectedLayoutSegments } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segments = useSelectedLayoutSegments()
+
+  return (
+    <ul>
+      {segments.map((segment, index) => (
+        <li key={index}>{segment}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+```jsx filename="app/example-client-component.js" switcher
+'use client'
+
+import { useSelectedLayoutSegments } from 'next/navigation'
+
+export default function ExampleClientComponent() {
+  const segments = useSelectedLayoutSegments()
+
+  return (
+    <ul>
+      {segments.map((segment, index) => (
+        <li key={index}>{segment}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+> **Good to know**:
+>
+> - Since `useSelectedLayoutSegments` is a [Client Component](/docs/app/building-your-application/rendering/client-components) hook, and Layouts are [Server Components](/docs/app/building-your-application/rendering/server-components) by default, `useSelectedLayoutSegments` is usually called via a Client Component that is imported into a Layout.
+> - The returned segments include [Route Groups](/docs/app/building-your-application/routing/route-groups), which you might not want to be included in your UI. You can use the `filter()` array method to remove items that start with a bracket.
+
+## Parameters
+
+```tsx
+const segments = useSelectedLayoutSegments(parallelRoutesKey?: string)
+```
+
+`useSelectedLayoutSegments` _optionally_ accepts a [`parallelRoutesKey`](/docs/app/building-your-application/routing/parallel-routes#useselectedlayoutsegments), which allows you to read the active route segment within that slot.
+
+## Returns
+
+`useSelectedLayoutSegments` returns an array of strings containing the active segments one level down from the layout the hook was called from. Or an empty array if none exist.
+
+For example, given the Layouts and URLs below, the returned segments would be:
+
+| Layout                    | Visited URL           | Returned Segments           |
+| ------------------------- | --------------------- | --------------------------- |
+| `app/layout.js`           | `/`                   | `[]`                        |
+| `app/layout.js`           | `/dashboard`          | `['dashboard']`             |
+| `app/layout.js`           | `/dashboard/settings` | `['dashboard', 'settings']` |
+| `app/dashboard/layout.js` | `/dashboard`          | `[]`                        |
+| `app/dashboard/layout.js` | `/dashboard/settings` | `['settings']`              |
+
+## Version History
+
+| Version   | Changes                                 |
+| --------- | --------------------------------------- |
+| `v13.0.0` | `useSelectedLayoutSegments` introduced. |

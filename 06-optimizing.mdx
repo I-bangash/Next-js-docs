@@ -1,0 +1,3062 @@
+# Optimizing
+
+
+## 01-images
+
+
+---
+title: Image Optimization
+nav_title: Images
+description: Optimize your images with the built-in `next/image` component.
+related:
+  title: API Reference
+  description: Learn more about the next/image API.
+  links:
+    - app/api-reference/components/image
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<details>
+  <summary>Examples</summary>
+
+- [Image Component](https://github.com/vercel/next.js/tree/canary/examples/image-component)
+
+</details>
+
+According to [Web Almanac](https://almanac.httparchive.org), images account for a huge portion of the typical website’s [page weight](https://almanac.httparchive.org/en/2022/page-weight#content-type-and-file-formats) and can have a sizable impact on your website's [LCP performance](https://almanac.httparchive.org/en/2022/performance#lcp-image-optimization).
+
+The Next.js Image component extends the HTML `<img>` element with features for automatic image optimization:
+
+- **Size Optimization:** Automatically serve correctly sized images for each device, using modern image formats like WebP and AVIF.
+- **Visual Stability:** Prevent [layout shift](/learn/seo/web-performance/cls) automatically when images are loading.
+- **Faster Page Loads:** Images are only loaded when they enter the viewport using native browser lazy loading, with optional blur-up placeholders.
+- **Asset Flexibility:** On-demand image resizing, even for images stored on remote servers
+
+> **🎥 Watch:** Learn more about how to use `next/image` → [YouTube (9 minutes)](https://youtu.be/IU_qq_c_lKA).
+
+## Usage
+
+```js
+import Image from 'next/image'
+```
+
+You can then define the `src` for your image (either local or remote).
+
+### Local Images
+
+To use a local image, `import` your `.jpg`, `.png`, or `.webp` image files.
+
+Next.js will [automatically determine](#image-sizing) the `width` and `height` of your image based on the imported file. These values are used to prevent [Cumulative Layout Shift](https://nextjs.org/learn/seo/web-performance/cls) while your image is loading.
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+import Image from 'next/image'
+import profilePic from './me.png'
+
+export default function Page() {
+  return (
+    <Image
+      src={profilePic}
+      alt="Picture of the author"
+      // width={500} automatically provided
+      // height={500} automatically provided
+      // blurDataURL="data:..." automatically provided
+      // placeholder="blur" // Optional blur-up while loading
+    />
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/index.js"
+import Image from 'next/image'
+import profilePic from '../public/me.png'
+
+export default function Page() {
+  return (
+    <Image
+      src={profilePic}
+      alt="Picture of the author"
+      // width={500} automatically provided
+      // height={500} automatically provided
+      // blurDataURL="data:..." automatically provided
+      // placeholder="blur" // Optional blur-up while loading
+    />
+  )
+}
+```
+
+</PagesOnly>
+
+> **Warning:** Dynamic `await import()` or `require()` are _not_ supported. The `import` must be static so it can be analyzed at build time.
+
+### Remote Images
+
+To use a remote image, the `src` property should be a URL string.
+
+Since Next.js does not have access to remote files during the build process, you'll need to provide the [`width`](/docs/app/api-reference/components/image#width), [`height`](/docs/app/api-reference/components/image#height) and optional [`blurDataURL`](/docs/app/api-reference/components/image#blurdataurl) props manually.
+
+The `width` and `height` attributes are used to infer the correct aspect ratio of image and avoid layout shift from the image loading in. The `width` and `height` do _not_ determine the rendered size of the image file. Learn more about [Image Sizing](#image-sizing).
+
+```jsx filename="app/page.js"
+import Image from 'next/image'
+
+export default function Page() {
+  return (
+    <Image
+      src="https://s3.amazonaws.com/my-bucket/profile.png"
+      alt="Picture of the author"
+      width={500}
+      height={500}
+    />
+  )
+}
+```
+
+To safely allow optimizing images, define a list of supported URL patterns in `next.config.js`. Be as specific as possible to prevent malicious usage. For example, the following configuration will only allow images from a specific AWS S3 bucket:
+
+```js filename="next.config.js"
+module.exports = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 's3.amazonaws.com',
+        port: '',
+        pathname: '/my-bucket/**',
+      },
+    ],
+  },
+}
+```
+
+Learn more about [`remotePatterns`](/docs/app/api-reference/components/image#remotepatterns) configuration. If you want to use relative URLs for the image `src`, use a [`loader`](/docs/app/api-reference/components/image#loader).
+
+### Domains
+
+Sometimes you may want to optimize a remote image, but still use the built-in Next.js Image Optimization API. To do this, leave the `loader` at its default setting and enter an absolute URL for the Image `src` prop.
+
+To protect your application from malicious users, you must define a list of remote hostnames you intend to use with the `next/image` component.
+
+> Learn more about [`remotePatterns`](/docs/app/api-reference/components/image#remotepatterns) configuration.
+
+### Loaders
+
+Note that in the [example earlier](#local-images), a partial URL (`"/me.png"`) is provided for a local image. This is possible because of the loader architecture.
+
+A loader is a function that generates the URLs for your image. It modifies the provided `src`, and generates multiple URLs to request the image at different sizes. These multiple URLs are used in the automatic [srcset](https://developer.mozilla.org/docs/Web/API/HTMLImageElement/srcset) generation, so that visitors to your site will be served an image that is the right size for their viewport.
+
+The default loader for Next.js applications uses the built-in Image Optimization API, which optimizes images from anywhere on the web, and then serves them directly from the Next.js web server. If you would like to serve your images directly from a CDN or image server, you can write your own loader function with a few lines of JavaScript.
+
+You can define a loader per-image with the [`loader` prop](/docs/app/api-reference/components/image#loader), or at the application level with the [`loaderFile` configuration](/docs/app/api-reference/components/image#loaderfile).
+
+## Priority
+
+You should add the `priority` property to the image that will be the [Largest Contentful Paint (LCP) element](https://web.dev/lcp/#what-elements-are-considered) for each page. Doing so allows Next.js to specially prioritize the image for loading (e.g. through preload tags or priority hints), leading to a meaningful boost in LCP.
+
+The LCP element is typically the largest image or text block visible within the viewport of the page. When you run `next dev`, you'll see a console warning if the LCP element is an `<Image>` without the `priority` property.
+
+Once you've identified the LCP image, you can add the property like this:
+
+<PagesOnly>
+
+```jsx filename="app/page.js"
+import Image from 'next/image'
+
+export default function Home() {
+  return (
+    <>
+      <h1>My Homepage</h1>
+      <Image
+        src="/me.png"
+        alt="Picture of the author"
+        width={500}
+        height={500}
+        priority
+      />
+      <p>Welcome to my homepage!</p>
+    </>
+  )
+}
+```
+
+</PagesOnly>
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+import Image from 'next/image'
+import profilePic from '../public/me.png'
+
+export default function Page() {
+  return <Image src={profilePic} alt="Picture of the author" priority />
+}
+```
+
+</AppOnly>
+
+See more about priority in the [`next/image` component documentation](/docs/app/api-reference/components/image#priority).
+
+## Image Sizing
+
+One of the ways that images most commonly hurt performance is through _layout shift_, where the image pushes other elements around on the page as it loads in. This performance problem is so annoying to users that it has its own Core Web Vital, called [Cumulative Layout Shift](https://web.dev/cls/). The way to avoid image-based layout shifts is to [always size your images](https://web.dev/optimize-cls/#images-without-dimensions). This allows the browser to reserve precisely enough space for the image before it loads.
+
+Because `next/image` is designed to guarantee good performance results, it cannot be used in a way that will contribute to layout shift, and **must** be sized in one of three ways:
+
+1. Automatically, using a [static import](#local-images)
+2. Explicitly, by including a [`width`](/docs/app/api-reference/components/image#width) and [`height`](/docs/app/api-reference/components/image#height) property
+3. Implicitly, by using [fill](/docs/app/api-reference/components/image#fill) which causes the image to expand to fill its parent element.
+
+> **What if I don't know the size of my images?**
+>
+> If you are accessing images from a source without knowledge of the images' sizes, there are several things you can do:
+>
+> **Use `fill`**
+>
+> The [`fill`](/docs/app/api-reference/components/image#fill) prop allows your image to be sized by its parent element. Consider using CSS to give the image's parent element space on the page along [`sizes`](/docs/app/api-reference/components/image#sizes) prop to match any media query break points. You can also use [`object-fit`](https://developer.mozilla.org/docs/Web/CSS/object-fit) with `fill`, `contain`, or `cover`, and [`object-position`](https://developer.mozilla.org/docs/Web/CSS/object-position) to define how the image should occupy that space.
+>
+> **Normalize your images**
+>
+> If you're serving images from a source that you control, consider modifying your image pipeline to normalize the images to a specific size.
+>
+> **Modify your API calls**
+>
+> If your application is retrieving image URLs using an API call (such as to a CMS), you may be able to modify the API call to return the image dimensions along with the URL.
+
+If none of the suggested methods works for sizing your images, the `next/image` component is designed to work well on a page alongside standard `<img>` elements.
+
+## Styling
+
+Styling the Image component is similar to styling a normal `<img>` element, but there are a few guidelines to keep in mind:
+
+- Use `className` or `style`, not `styled-jsx`.
+  - In most cases, we recommend using the `className` prop. This can be an imported [CSS Module](/docs/app/building-your-application/styling/css-modules), a [global stylesheet](/docs/app/building-your-application/styling/css-modules#global-styles), etc.
+  - You can also use the `style` prop to assign inline styles.
+  - You cannot use [styled-jsx](/docs/app/building-your-application/styling/css-in-js) because it's scoped to the current component (unless you mark the style as `global`).
+- When using `fill`, the parent element must have `position: relative`
+  - This is necessary for the proper rendering of the image element in that layout mode.
+- When using `fill`, the parent element must have `display: block`
+  - This is the default for `<div>` elements but should be specified otherwise.
+
+## Examples
+
+### Responsive
+
+<Image
+  alt="Responsive image filling the width and height of its parent container"
+  srcLight="/docs/light/responsive-image.png"
+  srcDark="/docs/dark/responsive-image.png"
+  width="1600"
+  height="629"
+/>
+
+```jsx
+import Image from 'next/image'
+import mountains from '../public/mountains.jpg'
+
+export default function Responsive() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Image
+        alt="Mountains"
+        // Importing an image will
+        // automatically set the width and height
+        src={mountains}
+        sizes="100vw"
+        // Make the image display full width
+        style={{
+          width: '100%',
+          height: 'auto',
+        }}
+      />
+    </div>
+  )
+}
+```
+
+### Fill Container
+
+<Image
+  alt="Grid of images filling parent container width"
+  srcLight="/docs/light/fill-container.png"
+  srcDark="/docs/dark/fill-container.png"
+  width="1600"
+  height="529"
+/>
+
+```jsx
+import Image from 'next/image'
+import mountains from '../public/mountains.jpg'
+
+export default function Fill() {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridGap: '8px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, auto))',
+      }}
+    >
+      <div style={{ position: 'relative', height: '400px' }}>
+        <Image
+          alt="Mountains"
+          src={mountains}
+          fill
+          sizes="(min-width: 808px) 50vw, 100vw"
+          style={{
+            objectFit: 'cover', // cover, contain, none
+          }}
+        />
+      </div>
+      {/* And more images in the grid... */}
+    </div>
+  )
+}
+```
+
+### Background Image
+
+<Image
+  alt="Background image taking full width and height of page"
+  srcLight="/docs/light/background-image.png"
+  srcDark="/docs/dark/background-image.png"
+  width="1600"
+  height="427"
+/>
+
+```jsx
+import Image from 'next/image'
+import mountains from '../public/mountains.jpg'
+
+export default function Background() {
+  return (
+    <Image
+      alt="Mountains"
+      src={mountains}
+      placeholder="blur"
+      quality={100}
+      fill
+      sizes="100vw"
+      style={{
+        objectFit: 'cover',
+      }}
+    />
+  )
+}
+```
+
+For examples of the Image component used with the various styles, see the [Image Component Demo](https://image-component.nextjs.gallery).
+
+## Other Properties
+
+[**View all properties available to the `next/image` component.**](/docs/app/api-reference/components/image)
+
+## Configuration
+
+The `next/image` component and Next.js Image Optimization API can be configured in the [`next.config.js` file](/docs/app/api-reference/next-config-js). These configurations allow you to [enable remote images](/docs/app/api-reference/components/image#remotepatterns), [define custom image breakpoints](/docs/app/api-reference/components/image#devicesizes), [change caching behavior](/docs/app/api-reference/components/image#caching-behavior) and more.
+
+[**Read the full image configuration documentation for more information.**](/docs/app/api-reference/components/image#configuration-options)
+
+
+## 02-fonts
+
+
+---
+title: Font Optimization
+nav_title: Fonts
+description: Optimize your application's web fonts with the built-in `next/font` loaders.
+related:
+  title: API Reference
+  description: Learn more about the next/font API.
+  links:
+    - app/api-reference/components/font
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+[**`next/font`**](/docs/app/api-reference/components/font) will automatically optimize your fonts (including custom fonts) and remove external network requests for improved privacy and performance.
+
+> **🎥 Watch:** Learn more about how to use `next/font` → [YouTube (6 minutes)](https://www.youtube.com/watch?v=L8_98i_bMMA).
+
+`next/font` includes **built-in automatic self-hosting** for _any_ font file. This means you can optimally load web fonts with zero layout shift, thanks to the underlying CSS `size-adjust` property used.
+
+This new font system also allows you to conveniently use all Google Fonts with performance and privacy in mind. CSS and font files are downloaded at build time and self-hosted with the rest of your static assets. **No requests are sent to Google by the browser.**
+
+## Google Fonts
+
+Automatically self-host any Google Font. Fonts are included in the deployment and served from the same domain as your deployment. **No requests are sent to Google by the browser.**
+
+Get started by importing the font you would like to use from `next/font/google` as a function. We recommend using [variable fonts](https://fonts.google.com/variablefonts) for the best performance and flexibility.
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+import { Inter } from 'next/font/google'
+
+// If loading a variable font, you don't need to specify the font weight
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { Inter } from 'next/font/google'
+
+// If loading a variable font, you don't need to specify the font weight
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+If you can't use a variable font, you will **need to specify a weight**:
+
+```tsx filename="app/layout.tsx" switcher
+import { Roboto } from 'next/font/google'
+
+const roboto = Roboto({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en" className={roboto.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { Roboto } from 'next/font/google'
+
+const roboto = Roboto({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={roboto.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+To use the font in all your pages, add it to [`_app.js` file](/docs/pages/building-your-application/routing/custom-app) under `/pages` as shown below:
+
+```jsx filename="pages/_app.js"
+import { Inter } from 'next/font/google'
+
+// If loading a variable font, you don't need to specify the font weight
+const inter = Inter({ subsets: ['latin'] })
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <main className={inter.className}>
+      <Component {...pageProps} />
+    </main>
+  )
+}
+```
+
+If you can't use a variable font, you will **need to specify a weight**:
+
+```jsx filename="pages/_app.js"
+import { Roboto } from 'next/font/google'
+
+const roboto = Roboto({
+  weight: '400',
+  subsets: ['latin'],
+})
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <main className={roboto.className}>
+      <Component {...pageProps} />
+    </main>
+  )
+}
+```
+
+</PagesOnly>
+
+You can specify multiple weights and/or styles by using an array:
+
+```jsx filename="app/layout.js"
+const roboto = Roboto({
+  weight: ['400', '700'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  display: 'swap',
+})
+```
+
+> **Good to know**: Use an underscore (\_) for font names with multiple words. E.g. `Roboto Mono` should be imported as `Roboto_Mono`.
+
+<PagesOnly>
+
+### Apply the font in `<head>`
+
+You can also use the font without a wrapper and `className` by injecting it inside the `<head>` as follows:
+
+```jsx filename="pages/_app.js"
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <>
+      <style jsx global>{`
+        html {
+          font-family: ${inter.style.fontFamily};
+        }
+      `}</style>
+      <Component {...pageProps} />
+    </>
+  )
+}
+```
+
+### Single page usage
+
+To use the font on a single page, add it to the specific page as shown below:
+
+```jsx filename="pages/index.js"
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export default function Home() {
+  return (
+    <div className={inter.className}>
+      <p>Hello World</p>
+    </div>
+  )
+}
+```
+
+</PagesOnly>
+
+### Specifying a subset
+
+Google Fonts are automatically [subset](https://fonts.google.com/knowledge/glossary/subsetting). This reduces the size of the font file and improves performance. You'll need to define which of these subsets you want to preload. Failing to specify any subsets while [`preload`](/docs/app/api-reference/components/font#preload) is `true` will result in a warning.
+
+This can be done by adding it to the function call:
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+const inter = Inter({ subsets: ['latin'] })
+```
+
+```jsx filename="app/layout.js" switcher
+const inter = Inter({ subsets: ['latin'] })
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/_app.js"
+const inter = Inter({ subsets: ['latin'] })
+```
+
+</PagesOnly>
+
+View the [Font API Reference](/docs/app/api-reference/components/font) for more information.
+
+### Using Multiple Fonts
+
+You can import and use multiple fonts in your application. There are two approaches you can take.
+
+The first approach is to create a utility function that exports a font, imports it, and applies its `className` where needed. This ensures the font is preloaded only when it's rendered:
+
+```ts filename="app/fonts.ts" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+
+export const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+})
+```
+
+```js filename="app/fonts.js" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+
+export const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+})
+```
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+import { inter } from './fonts'
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>
+        <div>{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { inter } from './fonts'
+
+export default function Layout({ children }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>
+        <div>{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```tsx filename="app/page.tsx" switcher
+import { roboto_mono } from './fonts'
+
+export default function Page() {
+  return (
+    <>
+      <h1 className={roboto_mono.className}>My page</h1>
+    </>
+  )
+}
+```
+
+```jsx filename="app/page.js" switcher
+import { roboto_mono } from './fonts'
+
+export default function Page() {
+  return (
+    <>
+      <h1 className={roboto_mono.className}>My page</h1>
+    </>
+  )
+}
+```
+
+</AppOnly>
+
+In the example above, `Inter` will be applied globally, and `Roboto Mono` can be imported and applied as needed.
+
+Alternatively, you can create a [CSS variable](/docs/app/api-reference/components/font#variable) and use it with your preferred CSS solution:
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+import styles from './global.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-roboto-mono',
+  display: 'swap',
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en" className={`${inter.variable} ${roboto_mono.variable}`}>
+      <body>
+        <h1>My App</h1>
+        <div>{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-roboto-mono',
+  display: 'swap',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${roboto_mono.variable}`}>
+      <body>
+        <h1>My App</h1>
+        <div>{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+```css filename="app/global.css"
+html {
+  font-family: var(--font-inter);
+}
+
+h1 {
+  font-family: var(--font-roboto-mono);
+}
+```
+
+In the example above, `Inter` will be applied globally, and any `<h1>` tags will be styled with `Roboto Mono`.
+
+> **Recommendation**: Use multiple fonts conservatively since each new font is an additional resource the client has to download.
+
+## Local Fonts
+
+Import `next/font/local` and specify the `src` of your local font file. We recommend using [variable fonts](https://fonts.google.com/variablefonts) for the best performance and flexibility.
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+import localFont from 'next/font/local'
+
+// Font files can be colocated inside of `app`
+const myFont = localFont({
+  src: './my-font.woff2',
+  display: 'swap',
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en" className={myFont.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import localFont from 'next/font/local'
+
+// Font files can be colocated inside of `app`
+const myFont = localFont({
+  src: './my-font.woff2',
+  display: 'swap',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={myFont.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/_app.js"
+import localFont from 'next/font/local'
+
+// Font files can be colocated inside of `pages`
+const myFont = localFont({ src: './my-font.woff2' })
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <main className={myFont.className}>
+      <Component {...pageProps} />
+    </main>
+  )
+}
+```
+
+</PagesOnly>
+
+If you want to use multiple files for a single font family, `src` can be an array:
+
+```js
+const roboto = localFont({
+  src: [
+    {
+      path: './Roboto-Regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './Roboto-Italic.woff2',
+      weight: '400',
+      style: 'italic',
+    },
+    {
+      path: './Roboto-Bold.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+    {
+      path: './Roboto-BoldItalic.woff2',
+      weight: '700',
+      style: 'italic',
+    },
+  ],
+})
+```
+
+View the [Font API Reference](/docs/app/api-reference/components/font) for more information.
+
+## With Tailwind CSS
+
+`next/font` can be used with [Tailwind CSS](https://tailwindcss.com/) through a [CSS variable](/docs/app/api-reference/components/font#css-variables).
+
+In the example below, we use the font `Inter` from `next/font/google` (you can use any font from Google or Local Fonts). Load your font with the `variable` option to define your CSS variable name and assign it to `inter`. Then, use `inter.variable` to add the CSS variable to your HTML document.
+
+<AppOnly>
+
+```tsx filename="app/layout.tsx" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
+
+const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-roboto-mono',
+})
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en" className={`${inter.variable} ${roboto_mono.variable}`}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { Inter, Roboto_Mono } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
+
+const roboto_mono = Roboto_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-roboto-mono',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${roboto_mono.variable}`}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/_app.js"
+import { Inter } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <main className={`${inter.variable} font-sans`}>
+      <Component {...pageProps} />
+    </main>
+  )
+}
+```
+
+</PagesOnly>
+
+Finally, add the CSS variable to your [Tailwind CSS config](/docs/app/building-your-application/styling/tailwind-css#configuring-tailwind):
+
+```js filename="tailwind.config.js"
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx}',
+    './components/**/*.{js,ts,jsx,tsx}',
+    './app/**/*.{js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)'],
+        mono: ['var(--font-roboto-mono)'],
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+You can now use the `font-sans` and `font-mono` utility classes to apply the font to your elements.
+
+## Preloading
+
+<AppOnly>
+When a font function is called on a page of your site, it is not globally available and preloaded on all routes. Rather, the font is only preloaded on the related routes based on the type of file where it is used:
+
+- If it's a [unique page](/docs/app/building-your-application/routing/pages-and-layouts#pages), it is preloaded on the unique route for that page.
+- If it's a [layout](/docs/app/building-your-application/routing/pages-and-layouts#layouts), it is preloaded on all the routes wrapped by the layout.
+- If it's the [root layout](/docs/app/building-your-application/routing/pages-and-layouts#root-layout-required), it is preloaded on all routes.
+
+</AppOnly>
+
+<PagesOnly>
+
+When a font function is called on a page of your site, it is not globally available and preloaded on all routes. Rather, the font is only preloaded on the related route/s based on the type of file where it is used:
+
+- if it's a [unique page](/docs/pages/building-your-application/routing/pages-and-layouts), it is preloaded on the unique route for that page
+- if it's in the [custom App](/docs/pages/building-your-application/routing/custom-app), it is preloaded on all the routes of the site under `/pages`
+
+</PagesOnly>
+
+## Reusing fonts
+
+Every time you call the `localFont` or Google font function, that font is hosted as one instance in your application. Therefore, if you load the same font function in multiple files, multiple instances of the same font are hosted. In this situation, it is recommended to do the following:
+
+- Call the font loader function in one shared file
+- Export it as a constant
+- Import the constant in each file where you would like to use this font
+
+
+## 03-scripts
+
+
+---
+title: Script Optimization
+nav_title: Scripts
+description: Optimize 3rd party scripts with the built-in Script component.
+related:
+  title: API Reference
+  description: Learn more about the next/script API.
+  links:
+    - app/api-reference/components/script
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+<AppOnly>
+
+### Layout Scripts
+
+To load a third-party script for multiple routes, import `next/script` and include the script directly in your layout component:
+
+```tsx filename="app/dashboard/layout.tsx" switcher
+import Script from 'next/script'
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <>
+      <section>{children}</section>
+      <Script src="https://example.com/script.js" />
+    </>
+  )
+}
+```
+
+```jsx filename="app/dashboard/layout.js" switcher
+import Script from 'next/script'
+
+export default function DashboardLayout({ children }) {
+  return (
+    <>
+      <section>{children}</section>
+      <Script src="https://example.com/script.js" />
+    </>
+  )
+}
+```
+
+The third-party script is fetched when the folder route (e.g. `dashboard/page.js`) or any nested route (e.g. `dashboard/settings/page.js`) is accessed by the user. Next.js will ensure the script will **only load once**, even if a user navigates between multiple routes in the same layout.
+
+</AppOnly>
+
+### Application Scripts
+
+<AppOnly>
+
+To load a third-party script for all routes, import `next/script` and include the script directly in your root layout:
+
+```tsx filename="app/layout.tsx" switcher
+import Script from 'next/script'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+      <Script src="https://example.com/script.js" />
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import Script from 'next/script'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+      <Script src="https://example.com/script.js" />
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+To load a third-party script for all routes, import `next/script` and include the script directly in your custom `_app`:
+
+```jsx filename="pages/_app.js"
+import Script from 'next/script'
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Script src="https://example.com/script.js" />
+    </>
+  )
+}
+```
+
+</PagesOnly>
+
+This script will load and execute when _any_ route in your application is accessed. Next.js will ensure the script will **only load once**, even if a user navigates between multiple pages.
+
+> **Recommendation**: We recommend only including third-party scripts in specific pages or layouts in order to minimize any unnecessary impact to performance.
+
+### Strategy
+
+Although the default behavior of `next/script` allows you to load third-party scripts in any page or layout, you can fine-tune its loading behavior by using the `strategy` property:
+
+- `beforeInteractive`: Load the script before any Next.js code and before any page hydration occurs.
+- `afterInteractive`: (**default**) Load the script early but after some hydration on the page occurs.
+- `lazyOnload`: Load the script later during browser idle time.
+- `worker`: (experimental) Load the script in a web worker.
+
+Refer to the [`next/script`](/docs/app/api-reference/components/script#strategy) API reference documentation to learn more about each strategy and their use cases.
+
+### Offloading Scripts To A Web Worker (Experimental)
+
+> **Warning:** The `worker` strategy is not yet stable and does not yet work with the [`app`](/docs/app/building-your-application/routing/defining-routes) directory. Use with caution.
+
+Scripts that use the `worker` strategy are offloaded and executed in a web worker with [Partytown](https://partytown.builder.io/). This can improve the performance of your site by dedicating the main thread to the rest of your application code.
+
+This strategy is still experimental and can only be used if the `nextScriptWorkers` flag is enabled in `next.config.js`:
+
+```js filename="next.config.js"
+module.exports = {
+  experimental: {
+    nextScriptWorkers: true,
+  },
+}
+```
+
+Then, run `next` (normally `npm run dev` or `yarn dev`) and Next.js will guide you through the installation of the required packages to finish the setup:
+
+```bash filename="Terminal"
+npm run dev
+```
+
+You'll see instructions like these: Please install Partytown by running `npm install @builder.io/partytown`
+
+Once setup is complete, defining `strategy="worker"` will automatically instantiate Partytown in your application and offload the script to a web worker.
+
+```tsx filename="pages/home.tsx" switcher
+import Script from 'next/script'
+
+export default function Home() {
+  return (
+    <>
+      <Script src="https://example.com/script.js" strategy="worker" />
+    </>
+  )
+}
+```
+
+```jsx filename="pages/home.js" switcher
+import Script from 'next/script'
+
+export default function Home() {
+  return (
+    <>
+      <Script src="https://example.com/script.js" strategy="worker" />
+    </>
+  )
+}
+```
+
+There are a number of trade-offs that need to be considered when loading a third-party script in a web worker. Please see Partytown's [tradeoffs](https://partytown.builder.io/trade-offs) documentation for more information.
+
+### Inline Scripts
+
+Inline scripts, or scripts not loaded from an external file, are also supported by the Script component. They can be written by placing the JavaScript within curly braces:
+
+```jsx
+<Script id="show-banner">
+  {`document.getElementById('banner').classList.remove('hidden')`}
+</Script>
+```
+
+Or by using the `dangerouslySetInnerHTML` property:
+
+```jsx
+<Script
+  id="show-banner"
+  dangerouslySetInnerHTML={{
+    __html: `document.getElementById('banner').classList.remove('hidden')`,
+  }}
+/>
+```
+
+> **Warning**: An `id` property must be assigned for inline scripts in order for Next.js to track and optimize the script.
+
+### Executing Additional Code
+
+Event handlers can be used with the Script component to execute additional code after a certain event occurs:
+
+- `onLoad`: Execute code after the script has finished loading.
+- `onReady`: Execute code after the script has finished loading and every time the component is mounted.
+- `onError`: Execute code if the script fails to load.
+
+<AppOnly>
+
+These handlers will only work when `next/script` is imported and used inside of a [Client Component](/docs/app/building-your-application/rendering/client-components) where `"use client"` is defined as the first line of code:
+
+```tsx filename="app/page.tsx" switcher
+'use client'
+
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        onLoad={() => {
+          console.log('Script has loaded')
+        }}
+      />
+    </>
+  )
+}
+```
+
+```jsx filename="app/page.js" switcher
+'use client'
+
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        onLoad={() => {
+          console.log('Script has loaded')
+        }}
+      />
+    </>
+  )
+}
+```
+
+Refer to the [`next/script`](/docs/app/api-reference/components/script#onload) API reference to learn more about each event handler and view examples.
+
+</AppOnly>
+
+<PagesOnly>
+
+These handlers will only work when `next/script` is imported and used inside of a [Client Component](/docs/app/building-your-application/rendering/client-components) where `"use client"` is defined as the first line of code:
+
+```tsx filename="pages/index.tsx" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        onLoad={() => {
+          console.log('Script has loaded')
+        }}
+      />
+    </>
+  )
+}
+```
+
+```jsx filename="pages/index.js" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        onLoad={() => {
+          console.log('Script has loaded')
+        }}
+      />
+    </>
+  )
+}
+```
+
+Refer to the [`next/script`](/docs/pages/api-reference/components/script#onload) API reference to learn more about each event handler and view examples.
+
+</PagesOnly>
+
+### Additional Attributes
+
+There are many DOM attributes that can be assigned to a `<script>` element that are not used by the Script component, like [`nonce`](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/nonce) or [custom data attributes](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/data-*). Including any additional attributes will automatically forward it to the final, optimized `<script>` element that is included in the HTML.
+
+<AppOnly>
+
+```tsx filename="app/page.tsx" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        id="example-script"
+        nonce="XUENAJFW"
+        data-test="script"
+      />
+    </>
+  )
+}
+```
+
+```jsx filename="app/page.js" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        id="example-script"
+        nonce="XUENAJFW"
+        data-test="script"
+      />
+    </>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```tsx filename="pages/index.tsx" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        id="example-script"
+        nonce="XUENAJFW"
+        data-test="script"
+      />
+    </>
+  )
+}
+```
+
+```jsx filename="pages/index.js" switcher
+import Script from 'next/script'
+
+export default function Page() {
+  return (
+    <>
+      <Script
+        src="https://example.com/script.js"
+        id="example-script"
+        nonce="XUENAJFW"
+        data-test="script"
+      />
+    </>
+  )
+}
+```
+
+</PagesOnly>
+
+
+## 04-metadata
+
+
+---
+title: Metadata
+description: Use the Metadata API to define metadata in any layout or page.
+related:
+  description: View all the Metadata API options.
+  links:
+    - app/api-reference/functions/generate-metadata
+    - app/api-reference/file-conventions/metadata
+    - app/api-reference/functions/generate-viewport
+---
+
+Next.js has a Metadata API that can be used to define your application metadata (e.g. `meta` and `link` tags inside your HTML `head` element) for improved SEO and web shareability.
+
+There are two ways you can add metadata to your application:
+
+- **Config-based Metadata**: Export a [static `metadata` object](/docs/app/api-reference/functions/generate-metadata#metadata-object) or a dynamic [`generateMetadata` function](/docs/app/api-reference/functions/generate-metadata#generatemetadata-function) in a `layout.js` or `page.js` file.
+- **File-based Metadata**: Add static or dynamically generated special files to route segments.
+
+With both these options, Next.js will automatically generate the relevant `<head>` elements for your pages. You can also create dynamic OG images using the [`ImageResponse`](/docs/app/api-reference/functions/image-response) constructor.
+
+## Static Metadata
+
+To define static metadata, export a [`Metadata` object](/docs/app/api-reference/functions/generate-metadata#metadata-object) from a `layout.js` or static `page.js` file.
+
+```tsx filename="layout.tsx | page.tsx" switcher
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: '...',
+  description: '...',
+}
+
+export default function Page() {}
+```
+
+```jsx filename="layout.js | page.js" switcher
+export const metadata = {
+  title: '...',
+  description: '...',
+}
+
+export default function Page() {}
+```
+
+For all the available options, see the [API Reference](/docs/app/api-reference/functions/generate-metadata).
+
+## Dynamic Metadata
+
+You can use `generateMetadata` function to `fetch` metadata that requires dynamic values.
+
+```tsx filename="app/products/[id]/page.tsx" switcher
+import type { Metadata, ResolvingMetadata } from 'next'
+
+type Props = {
+  params: { id: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export async function generateMetadata(
+  { params, searchParams }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // read route params
+  const id = params.id
+
+  // fetch data
+  const product = await fetch(`https://.../${id}`).then((res) => res.json())
+
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  return {
+    title: product.title,
+    openGraph: {
+      images: ['/some-specific-page-image.jpg', ...previousImages],
+    },
+  }
+}
+
+export default function Page({ params, searchParams }: Props) {}
+```
+
+```jsx filename="app/products/[id]/page.js" switcher
+export async function generateMetadata({ params, searchParams }, parent) {
+  // read route params
+  const id = params.id
+
+  // fetch data
+  const product = await fetch(`https://.../${id}`).then((res) => res.json())
+
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  return {
+    title: product.title,
+    openGraph: {
+      images: ['/some-specific-page-image.jpg', ...previousImages],
+    },
+  }
+}
+
+export default function Page({ params, searchParams }) {}
+```
+
+For all the available params, see the [API Reference](/docs/app/api-reference/functions/generate-metadata).
+
+> **Good to know**:
+>
+> - Both static and dynamic metadata through `generateMetadata` are **only supported in Server Components**.
+> - `fetch` requests are automatically [memoized](/docs/app/building-your-application/caching#request-memoization) for the same data across `generateMetadata`, `generateStaticParams`, Layouts, Pages, and Server Components. React [`cache` can be used](/docs/app/building-your-application/caching#request-memoization) if `fetch` is unavailable.
+> - Next.js will wait for data fetching inside `generateMetadata` to complete before streaming UI to the client. This guarantees the first part of a [streamed response](/docs/app/building-your-application/routing/loading-ui-and-streaming) includes `<head>` tags.
+
+## File-based metadata
+
+These special files are available for metadata:
+
+- [favicon.ico, apple-icon.jpg, and icon.jpg](/docs/app/api-reference/file-conventions/metadata/app-icons)
+- [opengraph-image.jpg and twitter-image.jpg](/docs/app/api-reference/file-conventions/metadata/opengraph-image)
+- [robots.txt](/docs/app/api-reference/file-conventions/metadata/robots)
+- [sitemap.xml](/docs/app/api-reference/file-conventions/metadata/sitemap)
+
+You can use these for static metadata, or you can programmatically generate these files with code.
+
+For implementation and examples, see the [Metadata Files](/docs/app/api-reference/functions/generate-metadata) API Reference and [Dynamic Image Generation](#dynamic-image-generation).
+
+## Behavior
+
+File-based metadata has the higher priority and will override any config-based metadata.
+
+### Default Fields
+
+There are two default `meta` tags that are always added even if a route doesn't define metadata:
+
+- The [meta charset tag](https://developer.mozilla.org/docs/Web/HTML/Element/meta#attr-charset) sets the character encoding for the website.
+- The [meta viewport tag](https://developer.mozilla.org/docs/Web/HTML/Viewport_meta_tag) sets the viewport width and scale for the website to adjust for different devices.
+
+```html
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+```
+
+> **Good to know**: You can overwrite the default [`viewport`](/docs/app/api-reference/functions/generate-metadata#viewport) meta tag.
+
+### Ordering
+
+Metadata is evaluated in order, starting from the root segment down to the segment closest to the final `page.js` segment. For example:
+
+1. `app/layout.tsx` (Root Layout)
+2. `app/blog/layout.tsx` (Nested Blog Layout)
+3. `app/blog/[slug]/page.tsx` (Blog Page)
+
+### Merging
+
+Following the [evaluation order](#ordering), Metadata objects exported from multiple segments in the same route are **shallowly** merged together to form the final metadata output of a route. Duplicate keys are **replaced** based on their ordering.
+
+This means metadata with nested fields such as [`openGraph`](/docs/app/api-reference/functions/generate-metadata#opengraph) and [`robots`](/docs/app/api-reference/functions/generate-metadata#robots) that are defined in an earlier segment are **overwritten** by the last segment to define them.
+
+#### Overwriting fields
+
+```jsx filename="app/layout.js"
+export const metadata = {
+  title: 'Acme',
+  openGraph: {
+    title: 'Acme',
+    description: 'Acme is a...',
+  },
+}
+```
+
+```jsx filename="app/blog/page.js"
+export const metadata = {
+  title: 'Blog',
+  openGraph: {
+    title: 'Blog',
+  },
+}
+
+// Output:
+// <title>Blog</title>
+// <meta property="og:title" content="Blog" />
+```
+
+In the example above:
+
+- `title` from `app/layout.js` is **replaced** by `title` in `app/blog/page.js`.
+- All `openGraph` fields from `app/layout.js` are **replaced** in `app/blog/page.js` because `app/blog/page.js` sets `openGraph` metadata. Note the absence of `openGraph.description`.
+
+If you'd like to share some nested fields between segments while overwriting others, you can pull them out into a separate variable:
+
+```jsx filename="app/shared-metadata.js"
+export const openGraphImage = { images: ['http://...'] }
+```
+
+```jsx filename="app/page.js"
+import { openGraphImage } from './shared-metadata'
+
+export const metadata = {
+  openGraph: {
+    ...openGraphImage,
+    title: 'Home',
+  },
+}
+```
+
+```jsx filename="app/about/page.js"
+import { openGraphImage } from '../shared-metadata'
+
+export const metadata = {
+  openGraph: {
+    ...openGraphImage,
+    title: 'About',
+  },
+}
+```
+
+In the example above, the OG image is shared between `app/layout.js` and `app/about/page.js` while the titles are different.
+
+#### Inheriting fields
+
+```jsx filename="app/layout.js"
+export const metadata = {
+  title: 'Acme',
+  openGraph: {
+    title: 'Acme',
+    description: 'Acme is a...',
+  },
+}
+```
+
+```jsx filename="app/about/page.js"
+export const metadata = {
+  title: 'About',
+}
+
+// Output:
+// <title>About</title>
+// <meta property="og:title" content="Acme" />
+// <meta property="og:description" content="Acme is a..." />
+```
+
+**Notes**
+
+- `title` from `app/layout.js` is **replaced** by `title` in `app/about/page.js`.
+- All `openGraph` fields from `app/layout.js` are **inherited** in `app/about/page.js` because `app/about/page.js` doesn't set `openGraph` metadata.
+
+## Dynamic Image Generation
+
+The `ImageResponse` constructor allows you to generate dynamic images using JSX and CSS. This is useful for creating social media images such as Open Graph images, Twitter cards, and more.
+
+`ImageResponse` uses the [Edge Runtime](/docs/app/building-your-application/rendering/edge-and-nodejs-runtimes#edge-runtime), and Next.js automatically adds the correct headers to cached images at the edge, helping improve performance and reducing recomputation.
+
+To use it, you can import `ImageResponse` from `next/og`:
+
+```jsx filename="app/about/route.js"
+import { ImageResponse } from 'next/og'
+
+export const runtime = 'edge'
+
+export async function GET() {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          fontSize: 128,
+          background: 'white',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          textAlign: 'center',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        Hello world!
+      </div>
+    ),
+    {
+      width: 1200,
+      height: 600,
+    }
+  )
+}
+```
+
+`ImageResponse` integrates well with other Next.js APIs, including [Route Handlers](/docs/app/building-your-application/routing/route-handlers) and file-based Metadata. For example, you can use `ImageResponse` in a `opengraph-image.tsx` file to generate Open Graph images at build time or dynamically at request time.
+
+`ImageResponse` supports common CSS properties including flexbox and absolute positioning, custom fonts, text wrapping, centering, and nested images. [See the full list of supported CSS properties](/docs/app/api-reference/functions/image-response).
+
+> **Good to know**:
+>
+> - Examples are available in the [Vercel OG Playground](https://og-playground.vercel.app/).
+> - `ImageResponse` uses [@vercel/og](https://vercel.com/docs/concepts/functions/edge-functions/og-image-generation), [Satori](https://github.com/vercel/satori), and Resvg to convert HTML and CSS into PNG.
+> - Only the Edge Runtime is supported. The default Node.js runtime will not work.
+> - Only flexbox and a subset of CSS properties are supported. Advanced layouts (e.g. `display: grid`) will not work.
+> - Maximum bundle size of `500KB`. The bundle size includes your JSX, CSS, fonts, images, and any other assets. If you exceed the limit, consider reducing the size of any assets or fetching at runtime.
+> - Only `ttf`, `otf`, and `woff` font formats are supported. To maximize the font parsing speed, `ttf` or `otf` are preferred over `woff`.
+
+## JSON-LD
+
+[JSON-LD](https://json-ld.org/) is a format for structured data that can be used by search engines to understand your content. For example, you can use it to describe a person, an event, an organization, a movie, a book, a recipe, and many other types of entities.
+
+Our current recommendation for JSON-LD is to render structured data as a `<script>` tag in your `layout.js` or `page.js` components. For example:
+
+```tsx filename="app/products/[id]/page.tsx" switcher
+export default async function Page({ params }) {
+  const product = await getProduct(params.id)
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: product.image,
+    description: product.description,
+  }
+
+  return (
+    <section>
+      {/* Add JSON-LD to your page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* ... */}
+    </section>
+  )
+}
+```
+
+```jsx filename="app/products/[id]/page.js" switcher
+export default async function Page({ params }) {
+  const product = await getProduct(params.id)
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: product.image,
+    description: product.description,
+  }
+
+  return (
+    <section>
+      {/* Add JSON-LD to your page */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* ... */}
+    </section>
+  )
+}
+```
+
+You can validate and test your structured data with the [Rich Results Test](https://search.google.com/test/rich-results) for Google or the generic [Schema Markup Validator](https://validator.schema.org/).
+
+You can type your JSON-LD with TypeScript using community packages like [`schema-dts`](https://www.npmjs.com/package/schema-dts):
+
+```tsx
+import { Product, WithContext } from 'schema-dts'
+
+const jsonLd: WithContext<Product> = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Next.js Sticker',
+  image: 'https://nextjs.org/imgs/sticker.png',
+  description: 'Dynamic at the speed of static.',
+}
+```
+
+
+## 05-static-assets
+
+
+---
+title: Static Assets
+description: Next.js allows you to serve static files, like images, in the public directory. You can learn how it works here.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js can serve static files, like images, under a folder called `public` in the root directory. Files inside `public` can then be referenced by your code starting from the base URL (`/`).
+
+For example, if you add `me.png` inside `public`, the following code will access the image:
+
+```jsx filename="Avatar.js"
+import Image from 'next/image'
+
+export function Avatar() {
+  return <Image src="/me.png" alt="me" width="64" height="64" />
+}
+```
+
+<PagesOnly>
+
+This folder is also useful for `robots.txt`, `favicon.ico`, Google Site Verification, and any other static files (including `.html`). But make sure to not have a static file with the same name as a file in the `pages/` directory, as this will result in an error. [Read more](/docs/messages/conflicting-public-file-page).
+
+</PagesOnly>
+
+<AppOnly>
+
+For static metadata files, such as `robots.txt`, `favicon.ico`, etc, you should use [special metadata files](/docs/app/api-reference/file-conventions/metadata) inside the `app` folder.
+
+</AppOnly>
+
+> Good to know:
+>
+> - The directory must be named `public`. The name cannot be changed and it's the only directory used to serve static assets.
+> - Only assets that are in the `public` directory at [build time](/docs/app/api-reference/next-cli#build) will be served by Next.js. Files added at request time won't be available. We recommend using a third-party service like [AWS S3](https://aws.amazon.com/s3/) for persistent file storage.
+
+
+## 06-lazy-loading
+
+
+---
+title: Lazy Loading
+description: Lazy load imported libraries and React Components to improve your application's loading performance.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+[Lazy loading](https://developer.mozilla.org/docs/Web/Performance/Lazy_loading) in Next.js helps improve the initial loading performance of an application by decreasing the amount of JavaScript needed to render a route.
+
+It allows you to defer loading of **Client Components** and imported libraries, and only include them in the client bundle when they're needed. For example, you might want to defer loading a modal until a user clicks to open it.
+
+There are two ways you can implement lazy loading in Next.js:
+
+1. Using [Dynamic Imports](#nextdynamic) with `next/dynamic`
+2. Using [`React.lazy()`](https://react.dev/reference/react/lazy) with [Suspense](https://react.dev/reference/react/Suspense)
+
+By default, Server Components are automatically [code split](https://developer.mozilla.org/docs/Glossary/Code_splitting), and you can use [streaming](/docs/app/building-your-application/routing/loading-ui-and-streaming) to progressively send pieces of UI from the server to the client. Lazy loading applies to Client Components.
+
+## `next/dynamic`
+
+`next/dynamic` is a composite of [`React.lazy()`](https://react.dev/reference/react/lazy) and [Suspense](https://react.dev/reference/react/Suspense). It behaves the same way in the `app` and `pages` directories to allow for incremental migration.
+
+## Examples
+
+<AppOnly>
+### Importing Client Components
+
+```jsx filename="app/page.js"
+'use client'
+
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
+
+// Client Components:
+const ComponentA = dynamic(() => import('../components/A'))
+const ComponentB = dynamic(() => import('../components/B'))
+const ComponentC = dynamic(() => import('../components/C'), { ssr: false })
+
+export default function ClientComponentExample() {
+  const [showMore, setShowMore] = useState(false)
+
+  return (
+    <div>
+      {/* Load immediately, but in a separate client bundle */}
+      <ComponentA />
+
+      {/* Load on demand, only when/if the condition is met */}
+      {showMore && <ComponentB />}
+      <button onClick={() => setShowMore(!showMore)}>Toggle</button>
+
+      {/* Load only on the client side */}
+      <ComponentC />
+    </div>
+  )
+}
+```
+
+### Skipping SSR
+
+When using `React.lazy()` and Suspense, Client Components will be pre-rendered (SSR) by default.
+
+If you want to disable pre-rendering for a Client Component, you can use the `ssr` option set to `false`:
+
+```jsx
+const ComponentC = dynamic(() => import('../components/C'), { ssr: false })
+```
+
+### Importing Server Components
+
+If you dynamically import a Server Component, only the Client Components that are children of the Server Component will be lazy-loaded - not the Server Component itself.
+
+```jsx filename="app/page.js"
+import dynamic from 'next/dynamic'
+
+// Server Component:
+const ServerComponent = dynamic(() => import('../components/ServerComponent'))
+
+export default function ServerComponentExample() {
+  return (
+    <div>
+      <ServerComponent />
+    </div>
+  )
+}
+```
+
+### Loading External Libraries
+
+External libraries can be loaded on demand using the [`import()`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/import) function. This example uses the external library `fuse.js` for fuzzy search. The module is only loaded on the client after the user types in the search input.
+
+```jsx filename="app/page.js"
+'use client'
+
+import { useState } from 'react'
+
+const names = ['Tim', 'Joe', 'Bel', 'Lee']
+
+export default function Page() {
+  const [results, setResults] = useState()
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search"
+        onChange={async (e) => {
+          const { value } = e.currentTarget
+          // Dynamically load fuse.js
+          const Fuse = (await import('fuse.js')).default
+          const fuse = new Fuse(names)
+
+          setResults(fuse.search(value))
+        }}
+      />
+      <pre>Results: {JSON.stringify(results, null, 2)}</pre>
+    </div>
+  )
+}
+```
+
+### Adding a custom loading component
+
+```jsx filename="app/page.js"
+import dynamic from 'next/dynamic'
+
+const WithCustomLoading = dynamic(
+  () => import('../components/WithCustomLoading'),
+  {
+    loading: () => <p>Loading...</p>,
+  }
+)
+
+export default function Page() {
+  return (
+    <div>
+      {/* The loading component will be rendered while  <WithCustomLoading/> is loading */}
+      <WithCustomLoading />
+    </div>
+  )
+}
+```
+
+### Importing Named Exports
+
+To dynamically import a named export, you can return it from the Promise returned by [`import()`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/import) function:
+
+```jsx filename="components/hello.js"
+'use client'
+
+export function Hello() {
+  return <p>Hello!</p>
+}
+```
+
+```jsx filename="app/page.js"
+import dynamic from 'next/dynamic'
+
+const ClientComponent = dynamic(() =>
+  import('../components/hello').then((mod) => mod.Hello)
+)
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+By using `next/dynamic`, the header component will not be included in the page's initial JavaScript bundle. The page will render the Suspense `fallback` first, followed by the `Header` component when the `Suspense` boundary is resolved.
+
+```jsx
+import dynamic from 'next/dynamic'
+
+const DynamicHeader = dynamic(() => import('../components/header'), {
+  loading: () => <p>Loading...</p>,
+})
+
+export default function Home() {
+  return <DynamicHeader />
+}
+```
+
+> **Good to know**: In `import('path/to/component')`, the path must be explicitly written. It can't be a template string nor a variable. Furthermore the `import()` has to be inside the `dynamic()` call for Next.js to be able to match webpack bundles / module ids to the specific `dynamic()` call and preload them before rendering. `dynamic()` can't be used inside of React rendering as it needs to be marked in the top level of the module for preloading to work, similar to `React.lazy`.
+
+## With named exports
+
+To dynamically import a named export, you can return it from the [Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise) returned by [`import()`](https://github.com/tc39/proposal-dynamic-import#example):
+
+```jsx filename="components/hello.js"
+export function Hello() {
+  return <p>Hello!</p>
+}
+
+// pages/index.js
+import dynamic from 'next/dynamic'
+
+const DynamicComponent = dynamic(() =>
+  import('../components/hello').then((mod) => mod.Hello)
+)
+```
+
+## With no SSR
+
+To dynamically load a component on the client side, you can use the `ssr` option to disable server-rendering. This is useful if an external dependency or component relies on browser APIs like `window`.
+
+```jsx
+import dynamic from 'next/dynamic'
+
+const DynamicHeader = dynamic(() => import('../components/header'), {
+  ssr: false,
+})
+```
+
+## With external libraries
+
+This example uses the external library `fuse.js` for fuzzy search. The module is only loaded in the browser after the user types in the search input.
+
+```jsx
+import { useState } from 'react'
+
+const names = ['Tim', 'Joe', 'Bel', 'Lee']
+
+export default function Page() {
+  const [results, setResults] = useState()
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search"
+        onChange={async (e) => {
+          const { value } = e.currentTarget
+          // Dynamically load fuse.js
+          const Fuse = (await import('fuse.js')).default
+          const fuse = new Fuse(names)
+
+          setResults(fuse.search(value))
+        }}
+      />
+      <pre>Results: {JSON.stringify(results, null, 2)}</pre>
+    </div>
+  )
+}
+```
+
+</PagesOnly>
+
+
+## 07-analytics
+
+
+---
+title: Analytics
+description: Measure and track page performance using Next.js Speed Insights
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+[Next.js Speed Insights](https://nextjs.org/analytics) allows you to analyze and measure the performance of
+pages using different metrics.
+
+You can start collecting your [Real Experience Score](https://vercel.com/docs/concepts/speed-insights#core-web-vitals-explained?utm_source=next-site&utm_medium=docs&utm_campaign=next-website) with zero-configuration on [Vercel deployments](https://vercel.com/docs/concepts/speed-insights?utm_source=next-site&utm_medium=docs&utm_campaign=next-website).
+
+The rest of this documentation describes the built-in relayer Next.js Speed Insights uses.
+
+<PagesOnly>
+
+## Build Your Own
+
+First, you will need to create a [custom App](/docs/pages/building-your-application/routing/custom-app) component and define a `reportWebVitals` function:
+
+```jsx filename="pages/_app.js"
+export function reportWebVitals(metric) {
+  console.log(metric)
+}
+
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+
+export default MyApp
+```
+
+This function is fired when the final values for any of the metrics have finished calculating on
+the page. You can use to log any of the results to the console or send to a particular endpoint.
+
+The `metric` object returned to the function consists of a number of properties:
+
+- `id`: Unique identifier for the metric in the context of the current page load
+- `name`: Metric name
+- `startTime`: First recorded timestamp of the performance entry in [milliseconds](https://developer.mozilla.org/docs/Web/API/DOMHighResTimeStamp) (if applicable)
+- `value`: Value, or duration in [milliseconds](https://developer.mozilla.org/docs/Web/API/DOMHighResTimeStamp), of the performance entry
+- `label`: Type of metric (`web-vital` or `custom`)
+
+There are two types of metrics that are tracked:
+
+- Web Vitals
+- Custom metrics
+
+</PagesOnly>
+
+## Web Vitals
+
+[Web Vitals](https://web.dev/vitals/) are a set of useful metrics that aim to capture the user
+experience of a web page. The following web vitals are all included:
+
+- [Time to First Byte](https://developer.mozilla.org/docs/Glossary/Time_to_first_byte) (TTFB)
+- [First Contentful Paint](https://developer.mozilla.org/docs/Glossary/First_contentful_paint) (FCP)
+- [Largest Contentful Paint](https://web.dev/lcp/) (LCP)
+- [First Input Delay](https://web.dev/fid/) (FID)
+- [Cumulative Layout Shift](https://web.dev/cls/) (CLS)
+- [Interaction to Next Paint](https://web.dev/inp/) (INP) _(experimental)_
+
+<PagesOnly>
+
+You can handle all the results of these metrics using the `web-vital` label:
+
+```js
+export function reportWebVitals(metric) {
+  if (metric.label === 'web-vital') {
+    console.log(metric) // The metric object ({ id, name, startTime, value, label }) is logged to the console
+  }
+}
+```
+
+There's also the option of handling each of the metrics separately:
+
+```js
+export function reportWebVitals(metric) {
+  switch (metric.name) {
+    case 'FCP':
+      // handle FCP results
+      break
+    case 'LCP':
+      // handle LCP results
+      break
+    case 'CLS':
+      // handle CLS results
+      break
+    case 'FID':
+      // handle FID results
+      break
+    case 'TTFB':
+      // handle TTFB results
+      break
+    case 'INP':
+      // handle INP results (note: INP is still an experimental metric)
+      break
+    default:
+      break
+  }
+}
+```
+
+A third-party library, [web-vitals](https://github.com/GoogleChrome/web-vitals), is used to measure
+these metrics. Browser compatibility depends on the particular metric, so refer to the [Browser
+Support](https://github.com/GoogleChrome/web-vitals#browser-support) section to find out which
+browsers are supported.
+
+## Custom metrics
+
+In addition to the core metrics listed above, there are some additional custom metrics that
+measure the time it takes for the page to hydrate and render:
+
+- `Next.js-hydration`: Length of time it takes for the page to start and finish hydrating (in ms)
+- `Next.js-route-change-to-render`: Length of time it takes for a page to start rendering after a
+  route change (in ms)
+- `Next.js-render`: Length of time it takes for a page to finish render after a route change (in ms)
+
+You can handle all the results of these metrics using the `custom` label:
+
+```js
+export function reportWebVitals(metric) {
+  if (metric.label === 'custom') {
+    console.log(metric) // The metric object ({ id, name, startTime, value, label }) is logged to the console
+  }
+}
+```
+
+There's also the option of handling each of the metrics separately:
+
+```js
+export function reportWebVitals(metric) {
+  switch (metric.name) {
+    case 'Next.js-hydration':
+      // handle hydration results
+      break
+    case 'Next.js-route-change-to-render':
+      // handle route-change to render results
+      break
+    case 'Next.js-render':
+      // handle render results
+      break
+    default:
+      break
+  }
+}
+```
+
+These metrics work in all browsers that support the [User Timing API](https://caniuse.com/#feat=user-timing).
+
+## Sending results to external systems
+
+With the relay function, you can send results to any endpoint to measure and track
+real user performance on your site. For example:
+
+```js
+export function reportWebVitals(metric) {
+  const body = JSON.stringify(metric)
+  const url = 'https://example.com/analytics'
+
+  // Use `navigator.sendBeacon()` if available, falling back to `fetch()`.
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(url, body)
+  } else {
+    fetch(url, { body, method: 'POST', keepalive: true })
+  }
+}
+```
+
+> **Good to know**: If you use [Google Analytics](https://analytics.google.com/analytics/web/), using the
+> `id` value can allow you to construct metric distributions manually (to calculate percentiles,
+> etc.)
+>
+> ```js
+> export function reportWebVitals({ id, name, label, value }) {
+>   // Use `window.gtag` if you initialized Google Analytics as this example:
+>   // https://github.com/vercel/next.js/blob/canary/examples/with-google-analytics/pages/_app.js
+>   window.gtag('event', name, {
+>     event_category:
+>       label === 'web-vital' ? 'Web Vitals' : 'Next.js custom metric',
+>     value: Math.round(name === 'CLS' ? value * 1000 : value), // values must be integers
+>     event_label: id, // id unique to current page load
+>     non_interaction: true, // avoids affecting bounce rate.
+>   })
+> }
+> ```
+>
+> Read more about [sending results to Google Analytics](https://github.com/GoogleChrome/web-vitals#send-the-results-to-google-analytics).
+
+## TypeScript
+
+If you are using TypeScript, you can use the built-in type `NextWebVitalsMetric`:
+
+```tsx filename="pages/_app.tsx" switcher
+import type { AppProps, NextWebVitalsMetric } from 'next/app'
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />
+}
+
+export function reportWebVitals(metric: NextWebVitalsMetric) {
+  console.log(metric)
+}
+
+export default MyApp
+```
+
+```jsx filename="pages/_app.js" switcher
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+
+export function reportWebVitals(metric) {
+  console.log(metric)
+}
+
+export default MyApp
+```
+
+</PagesOnly>
+
+
+## 08-open-telemetry
+
+
+---
+title: OpenTelemetry
+description: Learn how to instrument your Next.js app with OpenTelemetry.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+> **Good to know**: This feature is **experimental**, you need to explicitly opt-in by providing `experimental.instrumentationHook = true;` in your `next.config.js`.
+
+Observability is crucial for understanding and optimizing the behavior and performance of your Next.js app.
+
+As applications become more complex, it becomes increasingly difficult to identify and diagnose issues that may arise. By leveraging observability tools, such as logging and metrics, developers can gain insights into their application's behavior and identify areas for optimization. With observability, developers can proactively address issues before they become major problems and provide a better user experience. Therefore, it is highly recommended to use observability in your Next.js applications to improve performance, optimize resources, and enhance user experience.
+
+We recommend using OpenTelemetry for instrumenting your apps.
+It's a platform-agnostic way to instrument apps that allows you to change your observability provider without changing your code.
+Read [Official OpenTelemetry docs](https://opentelemetry.io/docs/) for more information about OpenTelemetry and how it works.
+
+This documentation uses terms like _Span_, _Trace_ or _Exporter_ throughout this doc, all of which can be found in [the OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/).
+
+Next.js supports OpenTelemetry instrumentation out of the box, which means that we already instrumented Next.js itself.
+When you enable OpenTelemetry we will automatically wrap all your code like `getStaticProps` in _spans_ with helpful attributes.
+
+> **Good to know**: We currently support OpenTelemetry bindings only in serverless functions.
+> We don't provide any for `edge` or client side code.
+
+## Getting Started
+
+OpenTelemetry is extensible but setting it up properly can be quite verbose.
+That's why we prepared a package `@vercel/otel` that helps you get started quickly.
+It's not extensible and you should configure OpenTelemetry manually if you need to customize your setup.
+
+### Using `@vercel/otel`
+
+To get started, you must install `@vercel/otel`:
+
+```bash filename="Terminal"
+npm install @vercel/otel
+```
+
+<AppOnly>
+
+Next, create a custom [`instrumentation.ts`](/docs/app/building-your-application/optimizing/instrumentation) (or `.js`) file in the **root directory** of the project (or inside `src` folder if using one):
+
+</AppOnly>
+
+<PagesOnly>
+
+Next, create a custom [`instrumentation.ts`](/docs/pages/building-your-application/optimizing/instrumentation) (or `.js`) file in the **root directory** of the project (or inside `src` folder if using one):
+
+</PagesOnly>
+
+```ts filename="your-project/instrumentation.ts" switcher
+import { registerOTel } from '@vercel/otel'
+
+export function register() {
+  registerOTel('next-app')
+}
+```
+
+```js filename="your-project/instrumentation.js" switcher
+import { registerOTel } from '@vercel/otel'
+
+export function register() {
+  registerOTel('next-app')
+}
+```
+
+<AppOnly>
+
+> **Good to know**
+>
+> - The `instrumentation` file should be in the root of your project and not inside the `app` or `pages` directory. If you're using the `src` folder, then place the file inside `src` alongside `pages` and `app`.
+> - If you use the [`pageExtensions` config option](/docs/app/api-reference/next-config-js/pageExtensions) to add a suffix, you will also need to update the `instrumentation` filename to match.
+> - We have created a basic [with-opentelemetry](https://github.com/vercel/next.js/tree/canary/examples/with-opentelemetry) example that you can use.
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Good to know**
+>
+> - The `instrumentation` file should be in the root of your project and not inside the `app` or `pages` directory. If you're using the `src` folder, then place the file inside `src` alongside `pages` and `app`.
+> - If you use the [`pageExtensions` config option](/docs/pages/api-reference/next-config-js/pageExtensions) to add a suffix, you will also need to update the `instrumentation` filename to match.
+> - We have created a basic [with-opentelemetry](https://github.com/vercel/next.js/tree/canary/examples/with-opentelemetry) example that you can use.
+
+</PagesOnly>
+
+### Manual OpenTelemetry configuration
+
+If our wrapper `@vercel/otel` doesn't suit your needs, you can configure OpenTelemetry manually.
+
+Firstly you need to install OpenTelemetry packages:
+
+```bash filename="Terminal"
+npm install @opentelemetry/sdk-node @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/sdk-trace-node @opentelemetry/exporter-trace-otlp-http
+```
+
+Now you can initialize `NodeSDK` in your `instrumentation.ts`.
+OpenTelemetry APIs are not compatible with edge runtime, so you need to make sure that you are importing them only when `process.env.NEXT_RUNTIME === 'nodejs'`. We recommend creating a new file `instrumentation.node.ts` which you conditionally import only when using node:
+
+```ts filename="instrumentation.ts" switcher
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation.node.ts')
+  }
+}
+```
+
+```js filename="instrumentation.js" switcher
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation.node.js')
+  }
+}
+```
+
+```ts filename="instrumentation.node.ts" switcher
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { Resource } from '@opentelemetry/resources'
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
+
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'next-app',
+  }),
+  spanProcessor: new SimpleSpanProcessor(new OTLPTraceExporter()),
+})
+sdk.start()
+```
+
+```js filename="instrumentation.node.js" switcher
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { Resource } from '@opentelemetry/resources'
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
+
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'next-app',
+  }),
+  spanProcessor: new SimpleSpanProcessor(new OTLPTraceExporter()),
+})
+sdk.start()
+```
+
+Doing this is equivalent to using `@vercel/otel`, but it's possible to modify and extend.
+For example, you could use `@opentelemetry/exporter-trace-otlp-grpc` instead of `@opentelemetry/exporter-trace-otlp-http` or you can specify more resource attributes.
+
+## Testing your instrumentation
+
+You need an OpenTelemetry collector with a compatible backend to test OpenTelemetry traces locally.
+We recommend using our [OpenTelemetry dev environment](https://github.com/vercel/opentelemetry-collector-dev-setup).
+
+If everything works well you should be able to see the root server span labeled as `GET /requested/pathname`.
+All other spans from that particular trace will be nested under it.
+
+Next.js traces more spans than are emitted by default.
+To see more spans, you must set `NEXT_OTEL_VERBOSE=1`.
+
+## Deployment
+
+### Using OpenTelemetry Collector
+
+When you are deploying with OpenTelemetry Collector, you can use `@vercel/otel`.
+It will work both on Vercel and when self-hosted.
+
+#### Deploying on Vercel
+
+We made sure that OpenTelemetry works out of the box on Vercel.
+
+Follow [Vercel documentation](https://vercel.com/docs/concepts/observability/otel-overview/quickstart) to connect your project to an observability provider.
+
+#### Self-hosting
+
+Deploying to other platforms is also straightforward. You will need to spin up your own OpenTelemetry Collector to receive and process the telemetry data from your Next.js app.
+
+To do this, follow the [OpenTelemetry Collector Getting Started guide](https://opentelemetry.io/docs/collector/getting-started/), which will walk you through setting up the collector and configuring it to receive data from your Next.js app.
+
+Once you have your collector up and running, you can deploy your Next.js app to your chosen platform following their respective deployment guides.
+
+### Custom Exporters
+
+We recommend using OpenTelemetry Collector.
+If that is not possible on your platform, you can use a custom OpenTelemetry exporter with [manual OpenTelemetry configuration](/docs/pages/building-your-application/optimizing/open-telemetry#manual-opentelemetry-configuration)
+
+## Custom Spans
+
+You can add a custom span with [OpenTelemetry APIs](https://opentelemetry.io/docs/instrumentation/js/instrumentation).
+
+```bash filename="Terminal"
+npm install @opentelemetry/api
+```
+
+The following example demonstrates a function that fetches GitHub stars and adds a custom `fetchGithubStars` span to track the fetch request's result:
+
+```ts
+import { trace } from '@opentelemetry/api'
+
+export async function fetchGithubStars() {
+  return await trace
+    .getTracer('nextjs-example')
+    .startActiveSpan('fetchGithubStars', async (span) => {
+      try {
+        return await getValue()
+      } finally {
+        span.end()
+      }
+    })
+}
+```
+
+The `register` function will execute before your code runs in a new environment.
+You can start creating new spans, and they should be correctly added to the exported trace.
+
+## Default Spans in Next.js
+
+Next.js automatically instruments several spans for you to provide useful insights into your application's performance.
+
+Attributes on spans follow [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/). We also add some custom attributes under the `next` namespace:
+
+- `next.span_name` - duplicates span name
+- `next.span_type` - each span type has a unique identifier
+- `next.route` - The route pattern of the request (e.g., `/[param]/user`).
+- `next.page`
+  - This is an internal value used by an app router.
+  - You can think about it as a route to a special file (like `page.ts`, `layout.ts`, `loading.ts` and others)
+  - It can be used as a unique identifier only when paired with `next.route` because `/layout` can be used to identify both `/(groupA)/layout.ts` and `/(groupB)/layout.ts`
+
+### `[http.method] [next.route]`
+
+- `next.span_type`: `BaseServer.handleRequest`
+
+This span represents the root span for each incoming request to your Next.js application. It tracks the HTTP method, route, target, and status code of the request.
+
+Attributes:
+
+- [Common HTTP attributes](https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#common-attributes)
+  - `http.method`
+  - `http.status_code`
+- [Server HTTP attributes](https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#http-server-semantic-conventions)
+  - `http.route`
+  - `http.target`
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `render route (app) [next.route]`
+
+- `next.span_type`: `AppRender.getBodyResult`.
+
+This span represents the process of rendering a route in the app router.
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `fetch [http.method] [http.url]`
+
+- `next.span_type`: `AppRender.fetch`
+
+This span represents the fetch request executed in your code.
+
+Attributes:
+
+- [Common HTTP attributes](https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#common-attributes)
+  - `http.method`
+- [Client HTTP attributes](https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#http-client)
+  - `http.url`
+  - `net.peer.name`
+  - `net.peer.port` (only if specified)
+- `next.span_name`
+- `next.span_type`
+
+### `executing api route (app) [next.route]`
+
+- `next.span_type`: `AppRouteRouteHandlers.runHandler`.
+
+This span represents the execution of an API route handler in the app router.
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `getServerSideProps [next.route]`
+
+- `next.span_type`: `Render.getServerSideProps`.
+
+This span represents the execution of `getServerSideProps` for a specific route.
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `getStaticProps [next.route]`
+
+- `next.span_type`: `Render.getStaticProps`.
+
+This span represents the execution of `getStaticProps` for a specific route.
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `render route (pages) [next.route]`
+
+- `next.span_type`: `Render.renderDocument`.
+
+This span represents the process of rendering the document for a specific route.
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.route`
+
+### `generateMetadata [next.page]`
+
+- `next.span_type`: `ResolveMetadata.generateMetadata`.
+
+This span represents the process of generating metadata for a specific page (a single route can have multiple of these spans).
+
+Attributes:
+
+- `next.span_name`
+- `next.span_type`
+- `next.page`
+
+
+## 09-instrumentation
+
+
+---
+title: Instrumentation
+description: Learn how to use instrumentation to run code at server startup in your Next.js app
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+If you export a function named `register` from a `instrumentation.ts` (or `.js`) file in the **root directory** of your project (or inside the `src` folder if using one), we will call that function whenever a new Next.js server instance is bootstrapped.
+
+<AppOnly>
+
+> **Good to know**
+>
+> - This feature is **experimental**. To use it, you must explicitly opt in by defining `experimental.instrumentationHook = true;` in your `next.config.js`.
+> - The `instrumentation` file should be in the root of your project and not inside the `app` or `pages` directory. If you're using the `src` folder, then place the file inside `src` alongside `pages` and `app`.
+> - If you use the [`pageExtensions` config option](/docs/app/api-reference/next-config-js/pageExtensions) to add a suffix, you will also need to update the `instrumentation` filename to match.
+> - We have created a basic [with-opentelemetry](https://github.com/vercel/next.js/tree/canary/examples/with-opentelemetry) example that you can use.
+
+</AppOnly>
+
+<PagesOnly>
+
+> **Good to know**
+>
+> - This feature is **experimental**. To use it, you must explicitly opt in by defining `experimental.instrumentationHook = true;` in your `next.config.js`.
+> - The `instrumentation` file should be in the root of your project and not inside the `app` or `pages` directory. If you're using the `src` folder, then place the file inside `src` alongside `pages` and `app`.
+> - If you use the [`pageExtensions` config option](/docs/pages/api-reference/next-config-js/pageExtensions) to add a suffix, you will also need to update the `instrumentation` filename to match.
+> - We have created a basic [with-opentelemetry](https://github.com/vercel/next.js/tree/canary/examples/with-opentelemetry) example that you can use.
+
+</PagesOnly>
+
+When your `register` function is deployed, it will be called on each cold boot (but exactly once in each environment).
+
+Sometimes, it may be useful to import a file in your code because of the side effects it will cause. For example, you might import a file that defines a set of global variables, but never explicitly use the imported file in your code. You would still have access to the global variables the package has declared.
+
+You can import files with side effects in `instrumentation.ts`, which you might want to use in your `register` function as demonstrated in the following example:
+
+```ts filename="your-project/instrumentation.ts" switcher
+import { init } from 'package-init'
+
+export function register() {
+  init()
+}
+```
+
+```js filename="your-project/instrumentation.js" switcher
+import { init } from 'package-init'
+
+export function register() {
+  init()
+}
+```
+
+However, we recommend importing files with side effects using `import` from within your `register` function instead. The following example demonstrates a basic usage of `import` in a `register` function:
+
+```ts filename="your-project/instrumentation.ts" switcher
+export async function register() {
+  await import('package-with-side-effect')
+}
+```
+
+```js filename="your-project/instrumentation.js" switcher
+export async function register() {
+  await import('package-with-side-effect')
+}
+```
+
+By doing this, you can colocate all of your side effects in one place in your code, and avoid any unintended consequences from importing files.
+
+We call `register` in all environments, so it's necessary to conditionally import any code that doesn't support both `edge` and `nodejs`. You can use the environment variable `NEXT_RUNTIME` to get the current environment. Importing an environment-specific code would look like this:
+
+```ts filename="your-project/instrumentation.ts" switcher
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation-node')
+  }
+
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    await import('./instrumentation-edge')
+  }
+}
+```
+
+```js filename="your-project/instrumentation.js" switcher
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation-node')
+  }
+
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    await import('./instrumentation-edge')
+  }
+}
+```
+
+
+## 10-third-party-libraries
+
+
+---
+title: Third Party Libraries
+description: Optimize the performance of third-party libraries in your application with the `@next/third-parties` package.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+**`@next/third-parties`** is a library that provides a collection of components and utilities that
+improve the performance and developer experience of loading popular third-party libraries in your
+Next.js application.
+
+> **Good to know**: `@next/third-parties` is a new **experimental** library that is still under
+> active development. We're currently working on adding more third-party integrations.
+
+All third-party integrations provided by `@next/third-parties` have been optimized for performance
+and ease of use.
+
+## Getting Started
+
+To get started, you must install the `@next/third-parties` library:
+
+```bash filename="Terminal"
+npm install @next/third-parties
+```
+
+## Google Third-Parties
+
+All supported third-party libraries from Google can be imported from `@next/third-parties/google`.
+
+### Google Tag Manager
+
+The `GoogleTagManager` component can be used to instantiate a [Google Tag
+Manager](https://developers.google.com/tag-platform/tag-manager) container to your
+page. By default, it fetches the original inline script after hydration occurs on the page.
+
+<AppOnly>
+
+To load Google Tag Manager for all routes, include the component directly in your root layout:
+
+```tsx filename="app/layout.tsx" switcher
+import { GoogleTagManager } from '@next/third-parties/google'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+      <GoogleTagManager gtmId="GTM-XYZ" />
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+import { GoogleTagManager } from '@next/third-parties/google'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+      <GoogleTagManager gtmId="GTM-XYZ" />
+    </html>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+To load Google Tag Manager for all routes, include the component directly in your custom `_app`:
+
+```jsx filename="pages/_app.js"
+import { GoogleTagManager } from '@next/third-parties/google'
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <GoogleTagManager gtmId="GTM-XYZ" />
+    </>
+  )
+}
+```
+
+</PagesOnly>
+
+To load Google Tag Manager for a single route, include the component in your page file:
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+import { GoogleTagManager } from '@next/third-parties/google'
+
+export default function Page() {
+  return <GoogleTagManager gtmId="GTM-XYZ" />
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/index.js"
+import { GoogleTagManager } from '@next/third-parties/google'
+
+export default function Page() {
+  return <GoogleTagManager gtmId="GTM-XYZ" />
+}
+```
+
+</PagesOnly>
+
+#### Sending Events
+
+The `sendGTMEvent` function can be used to track user interactions on your page by sending events
+using the `dataLayer` object. For this function to work, the `<GoogleTagManager />` component must be
+included in either a parent layout, page, or component, or directly in the same file.
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+'use client'
+
+import { sendGTMEvent } from '@next/third-parties/google'
+
+export function EventButton() {
+  return (
+    <div>
+      <button
+        onClick={() => sendGTMEvent({ event: 'buttonClicked', value: 'xyz' })}
+      >
+        Send Event
+      </button>
+    </div>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/index.js"
+import { sendGTMEvent } from '@next/third-parties/google'
+
+export function EventButton() {
+  return (
+    <div>
+      <button
+        onClick={() => sendGTMEvent({ event: 'buttonClicked', value: 'xyz' })}
+      >
+        Send Event
+      </button>
+    </div>
+  )
+}
+```
+
+</PagesOnly>
+
+Refer to the [Tag Manager](https://developers.google.com/tag-platform/tag-manager/datalayer)
+documentation to learn about the different variables and events that can be passed into the
+function.
+
+#### Options
+
+Options to pass to the Google Tag Manager. For a full list of options, read the [Google Tag Manager
+docs](https://developers.google.com/tag-platform/tag-manager/datalayer).
+
+| Name            | Type     | Description                                                                     |
+| --------------- | -------- | ------------------------------------------------------------------------------- |
+| `gtmId`         | Required | Your GTM container id.                                                          |
+| `dataLayer`     | Optional | Data layer array to instantiate the container with. Defaults to an empty array. |
+| `dataLayerName` | Optional | Name of the data layer. Defaults to `dataLayer`.                                |
+| `auth`          | Optional | Value of authentication parameter (`gtm_auth`) for environment snippets.        |
+| `preview`       | Optional | Value of preview parameter (`gtm_preview`) for environment snippets.            |
+
+### Google Maps Embed
+
+The `GoogleMapsEmbed` component can be used to add a [Google Maps
+Embed](https://developers.google.com/maps/documentation/embed/embedding-map) to your page. By
+default, it uses the `loading` attribute to lazy-load the embed below the fold.
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+import { GoogleMapsEmbed } from '@next/third-parties/google'
+
+export default function Page() {
+  return (
+    <GoogleMapsEmbed
+      apiKey="XYZ"
+      height={200}
+      width="100%"
+      mode="place"
+      q="Brooklyn+Bridge,New+York,NY"
+    />
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/index.js"
+import { GoogleMapsEmbed } from '@next/third-parties/google'
+
+export default function Page() {
+  return (
+    <GoogleMapsEmbed
+      apiKey="XYZ"
+      height={200}
+      width="100%"
+      mode="place"
+      q="Brooklyn+Bridge,New+York,NY"
+    />
+  )
+}
+```
+
+</PagesOnly>
+
+#### Options
+
+Options to pass to the Google Maps Embed. For a full list of options, read the [Google Map Embed
+docs](https://developers.google.com/maps/documentation/embed/embedding-map).
+
+| Name              | Type     | Description                                                                                         |
+| ----------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `apiKey`          | Required | Your api key.                                                                                       |
+| `mode`            | Required | [Map mode](https://developers.google.com/maps/documentation/embed/embedding-map#choosing_map_modes) |
+| `height`          | Optional | Height of the embed. Defaults to `auto`.                                                            |
+| `width`           | Optional | Width of the embed. Defaults to `auto`.                                                             |
+| `style`           | Optional | Pass styles to the iframe.                                                                          |
+| `allowfullscreen` | Optional | Property to allow certain map parts to go full screen.                                              |
+| `loading`         | Optional | Defaults to lazy. Consider changing if you know your embed will be above the fold.                  |
+| `q`               | Optional | Defines map marker location. _This may be required depending on the map mode_.                      |
+| `center`          | Optional | Defines the center of the map view.                                                                 |
+| `zoom`            | Optional | Sets initial zoom level of the map.                                                                 |
+| `maptype`         | Optional | Defines type of map tiles to load.                                                                  |
+| `language`        | Optional | Defines the language to use for UI elements and for the display of labels on map tiles.             |
+| `region`          | Optional | Defines the appropriate borders and labels to display, based on geo-political sensitivities.        |
+
+### YouTube Embed
+
+The `YouTubeEmbed` component can be used to load and display a YouTube embed. This component loads
+faster by using [`lite-youtube-embed`](https://github.com/paulirish/lite-youtube-embed) under the
+hood.
+
+<AppOnly>
+
+```jsx filename="app/page.js"
+import { YouTubeEmbed } from '@next/third-parties/google'
+
+export default function Page() {
+  return <YouTubeEmbed videoid="ogfYd705cRs" height={400} params="controls=0" />
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+```jsx filename="pages/index.js"
+import { YouTubeEmbed } from '@next/third-parties/google'
+
+export default function Page() {
+  return <YouTubeEmbed videoid="ogfYd705cRs" height={400} params="controls=0" />
+}
+```
+
+</PagesOnly>
+
+#### Options
+
+| Name        | Type     | Description                                                                                                                                                                                                  |
+| ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `videoid`   | Required | YouTube video id.                                                                                                                                                                                            |
+| `width`     | Optional | Width of the video container. Defaults to `auto`                                                                                                                                                             |
+| `height`    | Optional | Height of the video container. Defaults to `auto`                                                                                                                                                            |
+| `playlabel` | Optional | A visually hidden label for the play button for accessibility.                                                                                                                                               |
+| `params`    | Optional | The video player params defined [here](https://developers.google.com/youtube/player_parameters#Parameters). <br/> Params are passed as a query param string. <br/> Eg: `params="controls=0&start=10&end=30"` |
+| `style`     | Optional | Used to apply styles to the video container.                                                                                                                                                                 |
+
+
+## index
+
+
+---
+title: Optimizations
+nav_title: Optimizing
+description: Optimize your Next.js application for best performance and user experience.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js comes with a variety of built-in optimizations designed to improve your application's speed and [Core Web Vitals](https://web.dev/vitals/). This guide will cover the optimizations you can leverage to enhance your user experience.
+
+## Built-in Components
+
+Built-in components abstract away the complexity of implementing common UI optimizations. These components are:
+
+- **Images**: Built on the native `<img>` element. The Image Component optimizes images for performance by lazy loading and automatically resizing images based on device size.
+- **Link**: Built on the native `<a>` tags. The Link Component prefetches pages in the background, for faster and smoother page transitions.
+- **Scripts**: Built on the native `<script>` tags. The Script Component gives you control over loading and execution of third-party scripts.
+
+## Metadata
+
+Metadata helps search engines understand your content better (which can result in better SEO), and allows you to customize how your content is presented on social media, helping you create a more engaging and consistent user experience across various platforms.
+
+<AppOnly>
+
+The Metadata API in Next.js allows you to modify the `<head>` element of a page. You can configure metadata in two ways:
+
+- **Config-based Metadata**: Export a [static `metadata` object](/docs/app/api-reference/functions/generate-metadata#metadata-object) or a dynamic [`generateMetadata` function](/docs/app/api-reference/functions/generate-metadata#generatemetadata-function) in a `layout.js` or `page.js` file.
+- **File-based Metadata**: Add static or dynamically generated special files to route segments.
+
+Additionally, you can create dynamic Open Graph Images using JSX and CSS with [imageResponse](/docs/app/api-reference/functions/image-response) constructor.
+
+</AppOnly>
+
+<PagesOnly>
+
+The Head Component in Next.js allows you to modify the `<head>` of a page. Learn more in the [Head Component](/docs/pages/api-reference/components/head) documentation.
+
+</PagesOnly>
+
+## Static Assets
+
+Next.js `/public` folder can be used to serve static assets like images, fonts, and other files. Files inside `/public` can also be cached by CDN providers so that they are delivered efficiently.
+
+## Analytics and Monitoring
+
+For large applications, Next.js integrates with popular analytics and monitoring tools to help you understand how your application is performing. Learn more in the <PagesOnly>[Analytics](/docs/app/building-your-application/optimizing/analytics), </PagesOnly> [OpenTelemetry](/docs/pages/building-your-application/optimizing/open-telemetry)<PagesOnly>,</PagesOnly> and [Instrumentation](/docs/pages/building-your-application/optimizing/instrumentation) guides.

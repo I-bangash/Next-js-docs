@@ -1,0 +1,1113 @@
+# Deploying and Upgrading
+
+
+## 01-static-exports
+
+
+---
+title: Static Exports
+description: Next.js enables starting as a static site or Single-Page Application (SPA), then later optionally upgrading to use features that require a server.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js enables starting as a static site or Single-Page Application (SPA), then later optionally upgrading to use features that require a server.
+
+When running `next build`, Next.js generates an HTML file per route. By breaking a strict SPA into individual HTML files, Next.js can avoid loading unnecessary JavaScript code on the client-side, reducing the bundle size and enabling faster page loads.
+
+Since Next.js supports this static export, it can be deployed and hosted on any web server that can serve HTML/CSS/JS static assets.
+
+<PagesOnly>
+
+> **Good to know**: We recommend using the App Router for enhanced static export support.
+
+</PagesOnly>
+
+## Configuration
+
+To enable a static export, change the output mode inside `next.config.js`:
+
+```js filename="next.config.js" highlight={5}
+/**
+ * @type {import('next').NextConfig}
+ */
+const nextConfig = {
+  output: 'export',
+
+  // Optional: Change links `/me` -> `/me/` and emit `/me.html` -> `/me/index.html`
+  // trailingSlash: true,
+
+  // Optional: Prevent automatic `/me` -> `/me/`, instead preserve `href`
+  // skipTrailingSlashRedirect: true,
+
+  // Optional: Change the output directory `out` -> `dist`
+  // distDir: 'dist',
+}
+
+module.exports = nextConfig
+```
+
+After running `next build`, Next.js will produce an `out` folder which contains the HTML/CSS/JS assets for your application.
+
+<PagesOnly>
+
+You can utilize [`getStaticProps`](/docs/pages/building-your-application/data-fetching/get-static-props) and [`getStaticPaths`](/docs/pages/building-your-application/data-fetching/get-static-paths) to generate an HTML file for each page in your `pages` directory (or more for [dynamic routes](/docs/app/building-your-application/routing/dynamic-routes)).
+
+</PagesOnly>
+
+<AppOnly>
+
+## Supported Features
+
+The core of Next.js has been designed to support static exports.
+
+### Server Components
+
+When you run `next build` to generate a static export, Server Components consumed inside the `app` directory will run during the build, similar to traditional static-site generation.
+
+The resulting component will be rendered into static HTML for the initial page load and a static payload for client navigation between routes. No changes are required for your Server Components when using the static export, unless they consume [dynamic server functions](#unsupported-features).
+
+```tsx filename="app/page.tsx" switcher
+export default async function Page() {
+  // This fetch will run on the server during `next build`
+  const res = await fetch('https://api.example.com/...')
+  const data = await res.json()
+
+  return <main>...</main>
+}
+```
+
+### Client Components
+
+If you want to perform data fetching on the client, you can use a Client Component with [SWR](https://github.com/vercel/swr) to memoize requests.
+
+```tsx filename="app/other/page.tsx" switcher
+'use client'
+
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
+export default function Page() {
+  const { data, error } = useSWR(
+    `https://jsonplaceholder.typicode.com/posts/1`,
+    fetcher
+  )
+  if (error) return 'Failed to load'
+  if (!data) return 'Loading...'
+
+  return data.title
+}
+```
+
+```jsx filename="app/other/page.js" switcher
+'use client'
+
+import useSWR from 'swr'
+
+const fetcher = (url) => fetch(url).then((r) => r.json())
+
+export default function Page() {
+  const { data, error } = useSWR(
+    `https://jsonplaceholder.typicode.com/posts/1`,
+    fetcher
+  )
+  if (error) return 'Failed to load'
+  if (!data) return 'Loading...'
+
+  return data.title
+}
+```
+
+Since route transitions happen client-side, this behaves like a traditional SPA. For example, the following index route allows you to navigate to different posts on the client:
+
+```tsx filename="app/page.tsx" switcher
+import Link from 'next/link'
+
+export default function Page() {
+  return (
+    <>
+      <h1>Index Page</h1>
+      <hr />
+      <ul>
+        <li>
+          <Link href="/post/1">Post 1</Link>
+        </li>
+        <li>
+          <Link href="/post/2">Post 2</Link>
+        </li>
+      </ul>
+    </>
+  )
+}
+```
+
+```jsx filename="app/page.js" switcher
+import Link from 'next/link'
+
+export default function Page() {
+  return (
+    <>
+      <h1>Index Page</h1>
+      <p>
+        <Link href="/other">Other Page</Link>
+      </p>
+    </>
+  )
+}
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+## Supported Features
+
+The majority of core Next.js features needed to build a static site are supported, including:
+
+- [Dynamic Routes when using `getStaticPaths`](/docs/app/building-your-application/routing/dynamic-routes)
+- Prefetching with `next/link`
+- Preloading JavaScript
+- [Dynamic Imports](/docs/pages/building-your-application/optimizing/lazy-loading)
+- Any styling options (e.g. CSS Modules, styled-jsx)
+- [Client-side data fetching](/docs/pages/building-your-application/data-fetching/client-side)
+- [`getStaticProps`](/docs/pages/building-your-application/data-fetching/get-static-props)
+- [`getStaticPaths`](/docs/pages/building-your-application/data-fetching/get-static-paths)
+
+</PagesOnly>
+
+### Image Optimization
+
+[Image Optimization](/docs/app/building-your-application/optimizing/images) through `next/image` can be used with a static export by defining a custom image loader in `next.config.js`. For example, you can optimize images with a service like Cloudinary:
+
+```js filename="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',
+  images: {
+    loader: 'custom',
+    loaderFile: './my-loader.ts',
+  },
+}
+
+module.exports = nextConfig
+```
+
+This custom loader will define how to fetch images from a remote source. For example, the following loader will construct the URL for Cloudinary:
+
+```ts filename="my-loader.ts" switcher
+export default function cloudinaryLoader({
+  src,
+  width,
+  quality,
+}: {
+  src: string
+  width: number
+  quality?: number
+}) {
+  const params = ['f_auto', 'c_limit', `w_${width}`, `q_${quality || 'auto'}`]
+  return `https://res.cloudinary.com/demo/image/upload/${params.join(
+    ','
+  )}${src}`
+}
+```
+
+```js filename="my-loader.js" switcher
+export default function cloudinaryLoader({ src, width, quality }) {
+  const params = ['f_auto', 'c_limit', `w_${width}`, `q_${quality || 'auto'}`]
+  return `https://res.cloudinary.com/demo/image/upload/${params.join(
+    ','
+  )}${src}`
+}
+```
+
+You can then use `next/image` in your application, defining relative paths to the image in Cloudinary:
+
+```tsx filename="app/page.tsx" switcher
+import Image from 'next/image'
+
+export default function Page() {
+  return <Image alt="turtles" src="/turtles.jpg" width={300} height={300} />
+}
+```
+
+```jsx filename="app/page.js" switcher
+import Image from 'next/image'
+
+export default function Page() {
+  return <Image alt="turtles" src="/turtles.jpg" width={300} height={300} />
+}
+```
+
+<AppOnly>
+
+### Route Handlers
+
+Route Handlers will render a static response when running `next build`. Only the `GET` HTTP verb is supported. This can be used to generate static HTML, JSON, TXT, or other files from cached or uncached data. For example:
+
+```ts filename="app/data.json/route.ts" switcher
+export async function GET() {
+  return Response.json({ name: 'Lee' })
+}
+```
+
+```js filename="app/data.json/route.js" switcher
+export async function GET() {
+  return Response.json({ name: 'Lee' })
+}
+```
+
+The above file `app/data.json/route.ts` will render to a static file during `next build`, producing `data.json` containing `{ name: 'Lee' }`.
+
+If you need to read dynamic values from the incoming request, you cannot use a static export.
+
+### Browser APIs
+
+Client Components are pre-rendered to HTML during `next build`. Because [Web APIs](https://developer.mozilla.org/docs/Web/API) like `window`, `localStorage`, and `navigator` are not available on the server, you need to safely access these APIs only when running in the browser. For example:
+
+```jsx
+'use client';
+
+import { useEffect } from 'react';
+
+export default function ClientComponent() {
+  useEffect(() => {
+    // You now have access to `window`
+    console.log(window.innerHeight);
+  }, [])
+
+  return ...;
+}
+```
+
+</AppOnly>
+
+## Unsupported Features
+
+Features that require a Node.js server, or dynamic logic that cannot be computed during the build process, are **not** supported:
+
+<AppOnly>
+
+- [Dynamic Routes](/docs/app/building-your-application/routing/dynamic-routes) with `dynamicParams: true`
+- [Dynamic Routes](/docs/app/building-your-application/routing/dynamic-routes) without `generateStaticParams()`
+- [Route Handlers](/docs/app/building-your-application/routing/route-handlers) that rely on Request
+- [Cookies](/docs/app/api-reference/functions/cookies)
+- [Rewrites](/docs/app/api-reference/next-config-js/rewrites)
+- [Redirects](/docs/app/api-reference/next-config-js/redirects)
+- [Headers](/docs/app/api-reference/next-config-js/headers)
+- [Middleware](/docs/app/building-your-application/routing/middleware)
+- [Incremental Static Regeneration](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating)
+- [Image Optimization](/docs/app/building-your-application/optimizing/images) with the default `loader`
+- [Draft Mode](/docs/app/building-your-application/configuring/draft-mode)
+
+Attempting to use any of these features with `next dev` will result in an error, similar to setting the [`dynamic`](/docs/app/api-reference/file-conventions/route-segment-config#dynamic) option to `error` in the root layout.
+
+```jsx
+export const dynamic = 'error'
+```
+
+</AppOnly>
+
+<PagesOnly>
+
+- [Internationalized Routing](/docs/pages/building-your-application/routing/internationalization)
+- [API Routes](/docs/pages/building-your-application/routing/api-routes)
+- [Rewrites](/docs/pages/api-reference/next-config-js/rewrites)
+- [Redirects](/docs/pages/api-reference/next-config-js/redirects)
+- [Headers](/docs/pages/api-reference/next-config-js/headers)
+- [Middleware](/docs/pages/building-your-application/routing/middleware)
+- [Incremental Static Regeneration](/docs/pages/building-your-application/data-fetching/incremental-static-regeneration)
+- [Image Optimization](/docs/pages/building-your-application/optimizing/images) with the default `loader`
+- [Draft Mode](/docs/pages/building-your-application/configuring/draft-mode)
+- [`getStaticPaths` with `fallback: true`](/docs/pages/api-reference/functions/get-static-paths#fallback-true)
+- [`getStaticPaths` with `fallback: 'blocking'`](/docs/pages/api-reference/functions/get-static-paths#fallback-blocking)
+- [`getServerSideProps`](/docs/pages/building-your-application/data-fetching/get-server-side-props)
+
+</PagesOnly>
+
+## Deploying
+
+With a static export, Next.js can be deployed and hosted on any web server that can serve HTML/CSS/JS static assets.
+
+When running `next build`, Next.js generates the static export into the `out` folder. For example, let's say you have the following routes:
+
+- `/`
+- `/blog/[id]`
+
+After running `next build`, Next.js will generate the following files:
+
+- `/out/index.html`
+- `/out/404.html`
+- `/out/blog/post-1.html`
+- `/out/blog/post-2.html`
+
+If you are using a static host like Nginx, you can configure rewrites from incoming requests to the correct files:
+
+```nginx filename="nginx.conf"
+server {
+  listen 80;
+  server_name acme.com;
+
+  root /var/www/out;
+
+  location / {
+      try_files $uri $uri.html $uri/ =404;
+  }
+
+  # This is necessary when `trailingSlash: false`.
+  # You can omit this when `trailingSlash: true`.
+  location /blog/ {
+      rewrite ^/blog/(.*)$ /blog/$1.html break;
+  }
+
+  error_page 404 /404.html;
+  location = /404.html {
+      internal;
+  }
+}
+```
+
+## Version History
+
+| Version   | Changes                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `v14.0.0` | `next export` has been removed in favor of `"output": "export"`                                                      |
+| `v13.4.0` | App Router (Stable) adds enhanced static export support, including using React Server Components and Route Handlers. |
+| `v13.3.0` | `next export` is deprecated and replaced with `"output": "export"`                                                   |
+
+
+## index
+
+
+---
+title: Deploying
+description: Learn how to deploy your Next.js app to production, either managed or self-hosted.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Congratulations! You're here because you are ready to deploy your Next.js application. This page will show how to deploy either managed or self-hosted using the [Next.js Build API](#nextjs-build-api).
+
+## Next.js Build API
+
+`next build` generates an optimized version of your application for production. This standard output includes:
+
+- HTML files for pages using `getStaticProps` or [Automatic Static Optimization](/docs/pages/building-your-application/rendering/automatic-static-optimization)
+- CSS files for global styles or for individually scoped styles
+- JavaScript for pre-rendering dynamic content from the Next.js server
+- JavaScript for interactivity on the client-side through React
+
+This output is generated inside the `.next` folder:
+
+- `.next/static/chunks/pages` – Each JavaScript file inside this folder relates to the route with the same name. For example, `.next/static/chunks/pages/about.js` would be the JavaScript file loaded when viewing the `/about` route in your application
+- `.next/static/media` – Statically imported images from `next/image` are hashed and copied here
+- `.next/static/css` – Global CSS files for all pages in your application
+- `.next/server/pages` – The HTML and JavaScript entry points prerendered from the server. The `.nft.json` files are created when [Output File Tracing](/docs/pages/api-reference/next-config-js/output) is enabled and contain all the file paths that depend on a given page.
+- `.next/server/chunks` – Shared JavaScript chunks used in multiple places throughout your application
+- `.next/cache` – Output for the build cache and cached images, responses, and pages from the Next.js server. Using a cache helps decrease build times and improve performance of loading images
+
+All JavaScript code inside `.next` has been **compiled** and browser bundles have been **minified** to help achieve the best performance and support [all modern browsers](/docs/architecture/supported-browsers).
+
+## Managed Next.js with Vercel
+
+[Vercel](https://vercel.com?utm_source=next-site&utm_medium=docs&utm_campaign=next-website) is the fastest way to deploy your Next.js application with zero configuration.
+
+When deploying to Vercel, the platform [automatically detects Next.js](https://vercel.com/solutions/nextjs?utm_source=next-site&utm_medium=docs&utm_campaign=next-website), runs `next build`, and optimizes the build output for you, including:
+
+- Persisting cached assets across deployments if unchanged
+- [Immutable deployments](https://vercel.com/features/previews?utm_source=next-site&utm_medium=docs&utm_campaign=next-website) with a unique URL for every commit
+- [Pages](/docs/pages/building-your-application/rendering/automatic-static-optimization) are automatically statically optimized, if possible
+- Assets (JavaScript, CSS, images, fonts) are compressed and served from a [Global Edge Network](https://vercel.com/features/infrastructure?utm_source=next-site&utm_medium=docs&utm_campaign=next-website)
+- [API Routes](/docs/pages/building-your-application/routing/api-routes) are automatically optimized as isolated [Serverless Functions](https://vercel.com/features/infrastructure?utm_source=next-site&utm_medium=docs&utm_campaign=next-website) that can scale infinitely
+- [Middleware](/docs/pages/building-your-application/routing/middleware) is automatically optimized as [Edge Functions](https://vercel.com/features/edge-functions?utm_source=next-site&utm_medium=docs&utm_campaign=next-website) that have zero cold starts and boot instantly
+
+In addition, Vercel provides features like:
+
+- Automatic performance monitoring with [Next.js Speed Insights](https://vercel.com/analytics?utm_source=next-site&utm_medium=docs&utm_campaign=next-website)
+- Automatic HTTPS and SSL certificates
+- Automatic CI/CD (through GitHub, GitLab, Bitbucket, etc.)
+- Support for [Environment Variables](https://vercel.com/docs/environment-variables?utm_source=next-site&utm_medium=docs&utm_campaign=next-website)
+- Support for [Custom Domains](https://vercel.com/docs/custom-domains?utm_source=next-site&utm_medium=docs&utm_campaign=next-website)
+- Support for [Image Optimization](/docs/pages/building-your-application/optimizing/images) with `next/image`
+- Instant global deployments via `git push`
+
+[Deploy a Next.js application to Vercel](https://vercel.com/new/git/external?repository-url=https://github.com/vercel/next.js/tree/canary/examples/hello-world&project-name=hello-world&repository-name=hello-world&utm_source=next-site&utm_medium=docs&utm_campaign=next-website) for free to try it out.
+
+## Self-Hosting
+
+You can self-host Next.js with support for all features using Node.js or Docker. You can also do a Static HTML Export, which [has some limitations](/docs/app/building-your-application/deploying/static-exports).
+
+### Node.js Server
+
+Next.js can be deployed to any hosting provider that supports Node.js. For example, [AWS EC2](https://aws.amazon.com/ec2/) or a [DigitalOcean Droplet](https://www.digitalocean.com/products/droplets/).
+
+First, ensure your `package.json` has the `"build"` and `"start"` scripts:
+
+```json filename="package.json"
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+Then, run `npm run build` to build your application. Finally, run `npm run start` to start the Node.js server. This server supports all features of Next.js.
+
+> If you are using [`next/image`](/docs/pages/building-your-application/optimizing/images), consider adding `sharp` for more performant [Image Optimization](/docs/pages/building-your-application/optimizing/images) in your production environment by running `npm install sharp` in your project directory. On Linux platforms, `sharp` may require [additional configuration](https://sharp.pixelplumbing.com/install#linux-memory-allocator) to prevent excessive memory usage.
+
+### Docker Image
+
+Next.js can be deployed to any hosting provider that supports [Docker](https://www.docker.com/) containers. You can use this approach when deploying to container orchestrators such as [Kubernetes](https://kubernetes.io/) or [HashiCorp Nomad](https://www.nomadproject.io/), or when running inside a single node in any cloud provider.
+
+1. [Install Docker](https://docs.docker.com/get-docker/) on your machine
+1. Clone the [with-docker](https://github.com/vercel/next.js/tree/canary/examples/with-docker) example
+1. Build your container: `docker build -t nextjs-docker .`
+1. Run your container: `docker run -p 3000:3000 nextjs-docker`
+
+If you need to use different Environment Variables across multiple environments, check out our [with-docker-multi-env](https://github.com/vercel/next.js/tree/canary/examples/with-docker-multi-env) example.
+
+### Static HTML Export
+
+If you’d like to do a static HTML export of your Next.js app, follow the directions on our [Static HTML Export documentation](/docs/app/building-your-application/deploying/static-exports).
+
+## Other Services
+
+The following services support Next.js `v12+`. Below, you’ll find examples or guides to deploy Next.js to each service.
+
+### Managed Server
+
+- [AWS Copilot](https://aws.github.io/copilot-cli/)
+- [Digital Ocean App Platform](https://docs.digitalocean.com/tutorials/app-nextjs-deploy/)
+- [Google Cloud Run](https://github.com/vercel/next.js/tree/canary/examples/with-docker)
+- [Heroku](https://elements.heroku.com/buildpacks/mars/heroku-nextjs)
+- [Railway](https://docs.railway.app/getting-started)
+- [Render](https://render.com/docs/deploy-nextjs-app)
+
+> **Good to know**: There are also managed platforms that allow you to use a Dockerfile as shown in the [example above](#docker-image).
+
+### Static Only
+
+The following services only support deploying Next.js using [`output: 'export'`](/docs/app/building-your-application/deploying/static-exports).
+
+- [GitHub Pages](https://github.com/vercel/next.js/tree/canary/examples/github-pages)
+
+You can also manually deploy the output from [`output: 'export'`](/docs/app/building-your-application/deploying/static-exports) to any static hosting provider, often through your CI/CD pipeline like GitHub Actions, Jenkins, AWS CodeBuild, Circle CI, Azure Pipelines, and more.
+
+### Serverless
+
+- [AWS Amplify](https://aws.amazon.com/blogs/mobile/amplify-next-js-13/)
+- [Azure Static Web Apps](https://learn.microsoft.com/en-us/azure/static-web-apps/nextjs)
+- [Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-nextjs-site/)
+- [Firebase](https://firebase.google.com/docs/hosting/nextjs)
+- [Netlify](https://docs.netlify.com/integrations/frameworks/next-js)
+- [Terraform](https://github.com/milliHQ/terraform-aws-next-js)
+- [SST](https://docs.sst.dev/start/nextjs)
+
+> **Good to know**: Not all serverless providers implement the [Next.js Build API](#nextjs-build-api) from `next start`. Please check with the provider to see what features are supported.
+
+## Automatic Updates
+
+When you deploy your Next.js application, you want to see the latest version without needing to reload.
+
+Next.js will automatically load the latest version of your application in the background when routing. For client-side navigations, `next/link` will temporarily function as a normal `<a>` tag.
+
+> **Good to know**: If a new page (with an old version) has already been prefetched by `next/link`, Next.js will use the old version. Navigating to a page that has _not_ been prefetched (and is not cached at the CDN level) will load the latest version.
+
+## Manual Graceful shutdowns
+
+When self-hosting, you might want to run code when the server shuts down on `SIGTERM` or `SIGINT` signals.
+
+You can set the env variable `NEXT_MANUAL_SIG_HANDLE` to `true` and then register a handler for that signal inside your `_document.js` file. You will need to register the env variable directly in the `package.json` script, not in the `.env` file.
+
+> **Good to know**: Manual signal handling is not available in `next dev`.
+
+```json filename="package.json"
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "NEXT_MANUAL_SIG_HANDLE=true next start"
+  }
+}
+```
+
+```js filename="pages/_document.js"
+if (process.env.NEXT_MANUAL_SIG_HANDLE) {
+  // this should be added in your custom _document
+  process.on('SIGTERM', () => {
+    console.log('Received SIGTERM: ', 'cleaning up')
+    process.exit(0)
+  })
+
+  process.on('SIGINT', () => {
+    console.log('Received SIGINT: ', 'cleaning up')
+    process.exit(0)
+  })
+}
+```
+
+
+## 03-from-vite
+
+
+---
+title: Migrating from Vite
+description: Learn how to migrate your existing React application from Vite to Next.js.
+---
+
+This guide will help you migrate an existing Vite application to Next.js.
+
+## Why Switch?
+
+There are several reasons why you might want to switch from Vite to Next.js:
+
+1. **Slow initial page loading time**: If you have built your application with the [default Vite
+   plugin for React](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react),
+   your application is a purely client-side application. Client-side only applications, also known as
+   single-page applications (SPAs), often experience slow initial page loading time. This
+   happens due to a couple of reasons:
+   1. The browser needs to wait for the React code and your entire application bundle to download
+      and run before your code is able to send requests to load some data.
+   2. Your application code grows with every new feature and extra dependency you add.
+2. **No automatic code splitting**: The previous issue of slow loading times can be somewhat managed with code splitting.
+   However, if you try to do code splitting manually, you'll often make performance worse. It's easy
+   to inadvertently introduce network waterfalls when code-splitting manually. Next.js provides
+   automatic code splitting built into its router.
+3. **Network waterfalls**: A common cause of poor performance occurs when applications make
+   sequential client-server requests to fetch data. One common pattern for data fetching in an SPA
+   is to initially render a placeholder, and then fetch data after the component has mounted.
+   Unfortunately, this means that a child component that fetches data can't start fetching until
+   the parent component has finished loading its own data. On Next.js,
+   [this issue is resolved](https://github.com/reactjs/rfcs/blob/main/text/0188-server-components.md#no-client-server-waterfalls)
+   by fetching data in Server Components.
+4. **Fast and intentional loading states**: Thanks to built-in support for
+   [Streaming with Suspense](/docs/app/building-your-application/routing/loading-ui-and-streaming#streaming-with-suspense),
+   with Next.js, you can be more intentional about which parts of your UI you want to load first and
+   in what order without introducing network waterfalls. This enables you to build pages that are
+   faster to load and also eliminate [layout shifts](https://web.dev/cls/).
+5. **Choose the data fetching strategy**: Depending on your needs, Next.js allows you to choose your
+   data fetching strategy on a page and component basis. You can decide to fetch at build time, at
+   request time on the server, or on the client. For example, you can fetch data from your CMS and
+   render your blog posts at build time, which can then be efficiently cached on a CDN.
+6. **Middleware**: [Next.js Middleware](/docs/app/building-your-application/routing/middleware)
+   allows you to run code on the server before a request is completed. This is especially useful to
+   avoid having a flash of unauthenticated content when the user visits an authenticated-only page
+   by redirecting the user to a login page. The middleware is also useful for experimentation and
+   internationalization.
+7. **Built-in Optimizations**: Images, fonts, and third-party scripts often have significant impact
+   on an application's performance. Next.js comes with built-in components that automatically
+   optimize those for you.
+
+## Migration Steps
+
+Our goal with this migration is to get a working Next.js application as quickly as possible, so that
+you can then adopt Next.js features incrementally. To begin with, we'll keep it as a purely
+client-side application (SPA) without migrating your existing router. This helps minimize the
+chances of encountering issues during the migration process and reduces merge conflicts.
+
+### Step 1: Install the Next.js Dependency
+
+The first thing you need to do is to install `next` as a dependency:
+
+```bash filename="Terminal"
+npm install next@latest
+```
+
+### Step 2: Create the Next.js Configuration File
+
+Create a `next.config.mjs` at the root of your project. This file will hold your
+[Next.js configuration options](/docs/app/api-reference/next-config-js).
+
+```js filename="next.config.mjs"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export', // Outputs a Single-Page Application (SPA).
+  distDir: './dist', // Changes the build output directory to `./dist/`.
+}
+
+export default nextConfig
+```
+
+> **Good to know:** You can use either `.js` or `.mjs` for your Next.js configuration file.
+
+### Step 3: Update TypeScript Configuration
+
+If you're using TypeScript, you need to update your `tsconfig.json` file with the following changes
+to make it compatible with Next.js. If you're not using TypeScript, you can skip this step.
+
+1. Remove the [project reference](https://www.typescriptlang.org/tsconfig#references) to `tsconfig.node.json`
+2. Add `./dist/types/**/*.ts` and `./next-env.d.ts` to the [`include` array](https://www.typescriptlang.org/tsconfig#include)
+3. Add `./node_modules` to the [`exclude` array](https://www.typescriptlang.org/tsconfig#exclude)
+4. Add `{ "name": "next" }` to the [`plugins` array in `compilerOptions`](https://www.typescriptlang.org/tsconfig#plugins): `"plugins": [{ "name": "next" }]`
+5. Set [`esModuleInterop`](https://www.typescriptlang.org/tsconfig#esModuleInterop) to `true`: `"esModuleInterop": true`
+6. Set [`jsx`](https://www.typescriptlang.org/tsconfig#jsx) to `preserve`: `"jsx": "preserve"`
+7. Set [`allowJs`](https://www.typescriptlang.org/tsconfig#allowJs) to `true`: `"allowJs": true`
+8. Set [`forceConsistentCasingInFileNames`](https://www.typescriptlang.org/tsconfig#forceConsistentCasingInFileNames) to `true`: `"forceConsistentCasingInFileNames": true`
+9. Set [`incremental`](https://www.typescriptlang.org/tsconfig#incremental) to `true`: `"incremental": true`
+
+Here's an example of a working `tsconfig.json` with those changes:
+
+```json filename="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }]
+  },
+  "include": ["./src", "./dist/types/**/*.ts", "./next-env.d.ts"],
+  "exclude": ["./node_modules"]
+}
+```
+
+You can find more information about configuring TypeScript on the
+[Next.js docs](/docs/app/building-your-application/configuring/typescript#typescript-plugin).
+
+### Step 4: Create the Root Layout
+
+A Next.js [App Router](/docs/app) application must include a
+[root layout](/docs/app/building-your-application/routing/pages-and-layouts#root-layout-required)
+file, which is a [React Server Component](/docs/app/building-your-application/rendering/server-components)
+that will wrap all pages in your application. This file is defined at the top level of the `app`
+directory.
+
+The closest equivalent to the root layout file in a Vite application is the
+[`index.html` file](https://vitejs.dev/guide/#index-html-and-project-root), which contains your
+`<html>`, `<head>`, and `<body>` tags.
+
+In this step, you'll convert your `index.html` file into a root layout file:
+
+1. Create a new `app` directory in your `src` directory.
+2. Create a new `layout.tsx` file inside that `app` directory:
+
+```tsx filename="app/layout.tsx" switcher
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return null
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export default function RootLayout({ children }) {
+  return null
+}
+```
+
+> **Good to know**: `.js`, `.jsx`, or `.tsx` extensions can be used for Layout files.
+
+3. Copy the content of your `index.html` file into the previously created `<RootLayout>` component while
+   replacing the `body.div#root` and `body.script` tags with `<div id="root">{children}</div>`:
+
+```tsx filename="app/layout.tsx" switcher
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+4. Next.js already includes by default the
+   [meta charset](https://developer.mozilla.org/docs/Web/HTML/Element/meta#charset) and
+   [meta viewport](https://developer.mozilla.org/docs/Web/HTML/Viewport_meta_tag) tags, so you
+   can safely remove those from your `<head>`:
+
+```tsx filename="app/layout.tsx" switcher
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+5. Any [metadata files](/docs/app/building-your-application/optimizing/metadata#file-based-metadata)
+   such as `favicon.ico`, `icon.png`, `robots.txt` are automatically added to the application
+   `<head>` tag as long as you have them placed into the top level of the `app` directory. After
+   moving
+   [all supported files](/docs/app/building-your-application/optimizing/metadata#file-based-metadata)
+   into the `app` directory you can safely delete their `<link>` tags:
+
+```tsx filename="app/layout.tsx" switcher
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>My App</title>
+        <meta name="description" content="My App is a..." />
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+6. Finally, Next.js can manage your last `<head>` tags with the
+   [Metadata API](/docs/app/building-your-application/optimizing/metadata). Move your final metadata
+   info into an exported
+   [`metadata` object](/docs/app/api-reference/functions/generate-metadata#metadata-object):
+
+```tsx filename="app/layout.tsx" switcher
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'My App',
+  description: 'My App is a...',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export const metadata = {
+  title: 'My App',
+  description: 'My App is a...',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
+```
+
+With the above changes, you shifted from declaring everything in your `index.html` to using Next.js'
+convention-based approach built into the framework
+([Metadata API](/docs/app/building-your-application/optimizing/metadata)). This approach enables you
+to more easily improve your SEO and web shareability of your pages.
+
+### Step 5: Create the Entrypoint Page
+
+On Next.js you declare an entrypoint for your application by creating a `page.tsx` file. The
+closest equivalent of this file on Vite is your `main.tsx` file. In this step, you’ll set up the
+entrypoint of your application.
+
+1. **Create a `[[...slug]]` directory in your `app` directory.**
+
+Since in this guide we're aiming first to set up our Next.js as an SPA (Single Page Application),
+you need your page entrypoint to catch all possible routes of your application. For that, create a
+new `[[...slug]]` directory in your `app` directory.
+
+This directory is what is called an
+[optional catch-all route segment](/docs/app/building-your-application/routing/dynamic-routes#optional-catch-all-segments).
+Next.js uses a file-system based router where
+[directories are used to define routes](/docs/app/building-your-application/routing/defining-routes#creating-routes).
+This special directory will make sure that all routes of your application will be directed to its
+containing `page.tsx` file.
+
+2. **Create a new `page.tsx` file inside the `app/[[...slug]]` directory with the following content:**
+
+```tsx filename="app/[[...slug]]/page.tsx" switcher
+'use client'
+
+import dynamic from 'next/dynamic'
+import '../../index.css'
+
+const App = dynamic(() => import('../../App'), { ssr: false })
+
+export default function Page() {
+  return <App />
+}
+```
+
+```jsx filename="app/[[...slug]]/page.js" switcher
+'use client'
+
+import dynamic from 'next/dynamic'
+import '../../index.css'
+
+const App = dynamic(() => import('../../App'), { ssr: false })
+
+export default function Page() {
+  return <App />
+}
+```
+
+> **Good to know**: `.js`, `.jsx`, or `.tsx` extensions can be used for Page files.
+
+This file contains a `<Page>` component which is marked as a
+[Client Component](/docs/app/building-your-application/rendering/client-components) by the `'use client'`
+directive. Without that directive, the component would have been a
+[Server Component](/docs/app/building-your-application/rendering/server-components).
+
+In Next.js, Client Components are [prerendered to HTML](/docs/app/building-your-application/rendering/client-components#how-are-client-components-rendered)
+on the server before being sent to the client, but since we want to first have a purely client-side
+application, you need to tell Next.js to disable the prerendering for the `<App>` component by
+dynamically importing it with the `ssr` option set to `false`:
+
+```tsx
+const App = dynamic(() => import('../../App'), { ssr: false })
+```
+
+### Step 6: Update Static Image Imports
+
+Next.js handles static image imports slightly different from Vite. With Vite, importing an image
+file will return its public URL as a string:
+
+```tsx filename="App.tsx"
+import image from './img.png' // `image` will be '/assets/img.2d8efhg.png' in production
+
+export default function App() {
+  return <img src={image} />
+}
+```
+
+With Next.js, static image imports return an object. The object can then be used directly with the
+Next.js [`<Image>` component](/docs/app/api-reference/components/image), or you can use the object's
+`src` property with your existing `<img>` tag.
+
+The `<Image>` component has the added benefits of
+[automatic image optimization](/docs/app/building-your-application/optimizing/images). The `<Image>`
+component automatically sets the `width` and `height` attributes of the resulting `<img>` based on
+the image's dimensions. This prevents layout shifts when the image loads. However, this can cause
+issues if your app contains images with only one of their dimensions being styled without the other
+styled to `auto`. When not styled to `auto`, the dimension will default to the `<img>` dimension
+attribute's value, which can cause the image to appear distorted.
+
+Keeping the `<img>` tag will reduce the amount of changes in your application and prevent the above
+issues. However, you'll still want to later migrate to the `<Image>` component to take advantage of
+the automatic optimizations.
+
+1. **Convert absolute import paths for images imported from `/public` into relative imports:**
+
+```tsx
+// Before
+import logo from '/logo.png'
+
+// After
+import logo from '../public/logo.png'
+```
+
+2. **Pass the image `src` property instead of the whole image object to your `<img>` tag:**
+
+```tsx
+// Before
+<img src={logo} />
+
+// After
+<img src={logo.src} />
+```
+
+> **Warning:** If you're using TypeScript, you might encounter type errors when accessing the `src`
+> property. You can safely ignore those for now. They will be fixed by the end of this guide.
+
+### Step 7: Migrate the Environment Variables
+
+Next.js has support for `.env`
+[environment variables](/docs/app/building-your-application/configuring/environment-variables)
+similar to Vite. The main difference is the prefix used to expose environment variables on the
+client-side.
+
+- Change all environment variables with the `VITE_` prefix to `NEXT_PUBLIC_`.
+
+Vite exposes a few built-in environment variables on the special `import.meta.env` object which
+aren’t supported by Next.js. You need to update their usage as follows:
+
+- `import.meta.env.MODE` ⇒ `process.env.NODE_ENV`
+- `import.meta.env.PROD` ⇒ `process.env.NODE_ENV === 'production'`
+- `import.meta.env.DEV` ⇒ `process.env.NODE_ENV !== 'production'`
+- `import.meta.env.SSR` ⇒ `typeof window !== 'undefined'`
+
+Next.js also doesn't provide a built-in `BASE_URL` environment variable. However, you can still
+configure one, if you need it:
+
+1. **Add the following to your `.env` file:**
+
+```bash filename=".env"
+# ...
+NEXT_PUBLIC_BASE_PATH="/some-base-path"
+```
+
+2. **Set [`basePath`](/docs/app/api-reference/next-config-js/basePath) to `process.env.NEXT_PUBLIC_BASE_PATH` in your `next.config.mjs` file:**
+
+```js filename="next.config.mjs"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export', // Outputs a Single-Page Application (SPA).
+  distDir: './dist', // Changes the build output directory to `./dist/`.
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH, // Sets the base path to `/some-base-path`.
+}
+
+export default nextConfig
+```
+
+3. **Update `import.meta.env.BASE_URL` usages to `process.env.NEXT_PUBLIC_BASE_PATH`**
+
+### Step 8: Update Scripts in `package.json`
+
+You should now be able to run your application to test if you successfully migrated to Next.js. But
+before that, you need to update your `scripts` in your `package.json` with Next.js related commands,
+and add `.next` and `next-env.d.ts` to your `.gitignore`:
+
+```json filename="package.json"
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+```txt filename=".gitignore"
+# ...
+.next
+next-env.d.ts
+```
+
+Now run `npm run dev`, and open [`http://localhost:3000`](http://localhost:3000). You should
+hopefully see your application now running on Next.js.
+
+If your application followed a conventional Vite configuration, this is all you would need to do
+to have a working version of your application.
+
+> **Example:** Check out [this pull request](https://github.com/inngest/vite-to-nextjs/pull/1) for a
+> working example of a Vite application migrated to Next.js.
+
+### Step 9: Clean Up
+
+You can now clean up your codebase from Vite related artifacts:
+
+- Delete `main.tsx`
+- Delete `index.html`
+- Delete `vite-env.d.ts`
+- Delete `tsconfig.node.json`
+- Delete `vite.config.ts`
+- Uninstall Vite dependencies
+
+## Next Steps
+
+If everything went according to plan, you now have a functioning Next.js application running as a
+single-page application. However, you aren't yet taking advantage of most of Next.js' benefits, but
+you can now start making incremental changes to reap all the benefits. Here's what you might want to
+do next:
+
+- Migrate from React Router to the [Next.js App Router](/docs/app/building-your-application/routing) to get:
+  - Automatic code splitting
+  - [Streaming Server-Rendering](/docs/app/building-your-application/routing/loading-ui-and-streaming)
+  - [React Server Components](/docs/app/building-your-application/rendering/server-components)
+- [Optimize images with the `<Image>` component](/docs/app/building-your-application/optimizing/images)
+- [Optimize fonts with `next/font`](/docs/app/building-your-application/optimizing/fonts)
+- [Optimize third-party scripts with the `<Script>` component](/docs/app/building-your-application/optimizing/scripts)
+- [Update your ESLint configuration to support Next.js rules](/docs/app/building-your-application/configuring/eslint)

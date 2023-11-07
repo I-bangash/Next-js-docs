@@ -1,0 +1,1051 @@
+# API Metadata
+
+
+## app-icons
+
+
+---
+title: favicon, icon, and apple-icon
+description: API Reference for the Favicon, Icon and Apple Icon file conventions.
+---
+
+The `favicon`, `icon`, or `apple-icon` file conventions allow you to set icons for your application.
+
+They are useful for adding app icons that appear in places like web browser tabs, phone home screens, and search engine results.
+
+There are two ways to set app icons:
+
+- [Using image files (.ico, .jpg, .png)](#image-files-ico-jpg-png)
+- [Using code to generate an icon (.js, .ts, .tsx)](#generate-icons-using-code-js-ts-tsx)
+
+## Image files (.ico, .jpg, .png)
+
+Use an image file to set an app icon by placing a `favicon`, `icon`, or `apple-icon` image file within your `/app` directory.
+The `favicon` image can only be located in the top level of `app/`.
+
+Next.js will evaluate the file and automatically add the appropriate tags to your app's `<head>` element.
+
+| File convention             | Supported file types                    | Valid locations |
+| --------------------------- | --------------------------------------- | --------------- |
+| [`favicon`](#favicon)       | `.ico`                                  | `app/`          |
+| [`icon`](#icon)             | `.ico`, `.jpg`, `.jpeg`, `.png`, `.svg` | `app/**/*`      |
+| [`apple-icon`](#apple-icon) | `.jpg`, `.jpeg`, `.png`                 | `app/**/*`      |
+
+### `favicon`
+
+Add a `favicon.ico` image file to the root `/app` route segment.
+
+```html filename="<head> output"
+<link rel="icon" href="/favicon.ico" sizes="any" />
+```
+
+### `icon`
+
+Add an `icon.(ico|jpg|jpeg|png|svg)` image file.
+
+```html filename="<head> output"
+<link
+  rel="icon"
+  href="/icon?<generated>"
+  type="image/<generated>"
+  sizes="<generated>"
+/>
+```
+
+### `apple-icon`
+
+Add an `apple-icon.(jpg|jpeg|png)` image file.
+
+```html filename="<head> output"
+<link
+  rel="apple-touch-icon"
+  href="/apple-icon?<generated>"
+  type="image/<generated>"
+  sizes="<generated>"
+/>
+```
+
+> **Good to know**
+>
+> - You can set multiple icons by adding a number suffix to the file name. For example, `icon1.png`, `icon2.png`, etc. Numbered files will sort lexically.
+> - Favicons can only be set in the root `/app` segment. If you need more granularity, you can use [`icon`](#icon).
+> - The appropriate `<link>` tags and attributes such as `rel`, `href`, `type`, and `sizes` are determined by the icon type and metadata of the evaluated file.
+>   - For example, a 32 by 32px `.png` file will have `type="image/png"` and `sizes="32x32"` attributes.
+> - `sizes="any"` is added to `favicon.ico` output to [avoid a browser bug](https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs) where an `.ico` icon is favored over `.svg`.
+
+## Generate icons using code (.js, .ts, .tsx)
+
+In addition to using [literal image files](#image-files-ico-jpg-png), you can programmatically **generate** icons using code.
+
+Generate an app icon by creating an `icon` or `apple-icon` route that default exports a function.
+
+| File convention | Supported file types |
+| --------------- | -------------------- |
+| `icon`          | `.js`, `.ts`, `.tsx` |
+| `apple-icon`    | `.js`, `.ts`, `.tsx` |
+
+The easiest way to generate an icon is to use the [`ImageResponse`](/docs/app/api-reference/functions/image-response) API from `next/og`.
+
+```tsx filename="app/icon.tsx" switcher
+import { ImageResponse } from 'next/og'
+
+// Route segment config
+export const runtime = 'edge'
+
+// Image metadata
+export const size = {
+  width: 32,
+  height: 32,
+}
+export const contentType = 'image/png'
+
+// Image generation
+export default function Icon() {
+  return new ImageResponse(
+    (
+      // ImageResponse JSX element
+      <div
+        style={{
+          fontSize: 24,
+          background: 'black',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+        }}
+      >
+        A
+      </div>
+    ),
+    // ImageResponse options
+    {
+      // For convenience, we can re-use the exported icons size metadata
+      // config to also set the ImageResponse's width and height.
+      ...size,
+    }
+  )
+}
+```
+
+```jsx filename="app/icon.js" switcher
+import { ImageResponse } from 'next/og'
+
+// Route segment config
+export const runtime = 'edge'
+
+// Image metadata
+export const size = {
+  width: 32,
+  height: 32,
+}
+export const contentType = 'image/png'
+
+// Image generation
+export default function Icon() {
+  return new ImageResponse(
+    (
+      // ImageResponse JSX element
+      <div
+        style={{
+          fontSize: 24,
+          background: 'black',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+        }}
+      >
+        A
+      </div>
+    ),
+    // ImageResponse options
+    {
+      // For convenience, we can re-use the exported icons size metadata
+      // config to also set the ImageResponse's width and height.
+      ...size,
+    }
+  )
+}
+```
+
+```html filename="<head> output"
+<link rel="icon" href="/icon?<generated>" type="image/png" sizes="32x32" />
+```
+
+> **Good to know**
+>
+> - By default, generated icons are [**statically optimized**](/docs/app/building-your-application/rendering/server-components#static-rendering-default) (generated at build time and cached) unless they use [dynamic functions](/docs/app/building-your-application/rendering/server-components#server-rendering-strategies#dynamic-functions) or uncached data.
+> - You can generate multiple icons in the same file using [`generateImageMetadata`](/docs/app/api-reference/functions/generate-image-metadata).
+> - You cannot generate a `favicon` icon. Use [`icon`](#icon) or a [favicon.ico](#favicon) file instead.
+
+### Props
+
+The default export function receives the following props:
+
+#### `params` (optional)
+
+An object containing the [dynamic route parameters](/docs/app/building-your-application/routing/dynamic-routes) object from the root segment down to the segment `icon` or `apple-icon` is colocated in.
+
+```tsx filename="app/shop/[slug]/icon.tsx" switcher
+export default function Icon({ params }: { params: { slug: string } }) {
+  // ...
+}
+```
+
+```jsx filename="app/shop/[slug]/icon.js" switcher
+export default function Icon({ params }) {
+  // ...
+}
+```
+
+| Route                           | URL         | `params`                  |
+| ------------------------------- | ----------- | ------------------------- |
+| `app/shop/icon.js`              | `/shop`     | `undefined`               |
+| `app/shop/[slug]/icon.js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `app/shop/[tag]/[item]/icon.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `app/shop/[...slug]/icon.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+### Returns
+
+The default export function should return a `Blob` | `ArrayBuffer` | `TypedArray` | `DataView` | `ReadableStream` | `Response`.
+
+> **Good to know**: `ImageResponse` satisfies this return type.
+
+### Config exports
+
+You can optionally configure the icon's metadata by exporting `size` and `contentType` variables from the `icon` or `apple-icon` route.
+
+| Option                        | Type                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [`size`](#size)               | `{ width: number; height: number }`                                                                             |
+| [`contentType`](#contenttype) | `string` - [image MIME type](https://developer.mozilla.org/docs/Web/HTTP/Basics_of_HTTP/MIME_types#image_types) |
+
+#### `size`
+
+```tsx filename="icon.tsx | apple-icon.tsx" switcher
+export const size = { width: 32, height: 32 }
+
+export default function Icon() {}
+```
+
+```jsx filename="icon.js | apple-icon.js" switcher
+export const size = { width: 32, height: 32 }
+
+export default function Icon() {}
+```
+
+```html filename="<head> output"
+<link rel="icon" sizes="32x32" />
+```
+
+#### `contentType`
+
+```tsx filename="icon.tsx | apple-icon.tsx" switcher
+export const contentType = 'image/png'
+
+export default function Icon() {}
+```
+
+```jsx filename="icon.js | apple-icon.js" switcher
+export const contentType = 'image/png'
+
+export default function Icon() {}
+```
+
+```html filename="<head> output"
+<link rel="icon" type="image/png" />
+```
+
+#### Route Segment Config
+
+`icon` and `apple-icon` are specialized [Route Handlers](/docs/app/building-your-application/routing/route-handlers) that can use the same [route segment configuration](/docs/app/api-reference/file-conventions/route-segment-config) options as Pages and Layouts.
+
+| Option                                                                                             | Type                                                     | Default    |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------- |
+| [`dynamic`](/docs/app/api-reference/file-conventions/route-segment-config#dynamic)                 | `'auto' \| 'force-dynamic' \| 'error' \| 'force-static'` | `'auto'`   |
+| [`revalidate`](/docs/app/api-reference/file-conventions/route-segment-config#revalidate)           | `false \| 'force-cache' \| 0 \| number`                  | `false`    |
+| [`runtime`](/docs/app/api-reference/file-conventions/route-segment-config#runtime)                 | `'nodejs' \| 'edge'`                                     | `'nodejs'` |
+| [`preferredRegion`](/docs/app/api-reference/file-conventions/route-segment-config#preferredregion) | `'auto' \| 'global' \| 'home' \| string \| string[]`     | `'auto'`   |
+
+```tsx filename="app/icon.tsx" switcher
+export const runtime = 'edge'
+
+export default function Icon() {}
+```
+
+```jsx filename="app/icon.js" switcher
+export const runtime = 'edge'
+
+export default function Icon() {}
+```
+
+## Version History
+
+| Version   | Changes                                      |
+| --------- | -------------------------------------------- |
+| `v13.3.0` | `favicon` `icon` and `apple-icon` introduced |
+
+
+## index
+
+
+---
+title: Metadata Files API Reference
+nav_title: Metadata Files
+description: API documentation for the metadata file conventions.
+---
+
+This section of the docs covers **Metadata file conventions**. File-based metadata can be defined by adding special metadata files to route segments.
+
+Each file convention can be defined using a static file (e.g. `opengraph-image.jpg`), or a dynamic variant that uses code to generate the file (e.g. `opengraph-image.js`).
+
+Once a file is defined, Next.js will automatically serve the file (with hashes in production for caching) and update the relevant head elements with the correct metadata, such as the asset's URL, file type, and image size.
+
+
+## manifest
+
+
+---
+title: manifest.json
+description: API Reference for manifest.json file.
+---
+
+Add or generate a `manifest.(json|webmanifest)` file that matches the [Web Manifest Specification](https://developer.mozilla.org/docs/Web/Manifest) in the **root** of `app` directory to provide information about your web application for the browser.
+
+## Static Manifest file
+
+```json filename="app/manifest.json | app/manifest.webmanifest"
+{
+  "name": "My Next.js Application",
+  "short_name": "Next.js App",
+  "description": "An application built with Next.js",
+  "start_url": "/"
+  // ...
+}
+```
+
+## Generate a Manifest file
+
+Add a `manifest.js` or `manifest.ts` file that returns a [`Manifest` object](#manifest-object).
+
+```ts filename="app/manifest.ts" switcher
+import { MetadataRoute } from 'next'
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Next.js App',
+    short_name: 'Next.js App',
+    description: 'Next.js App',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#fff',
+    theme_color: '#fff',
+    icons: [
+      {
+        src: '/favicon.ico',
+        sizes: 'any',
+        type: 'image/x-icon',
+      },
+    ],
+  }
+}
+```
+
+```js filename="app/manifest.js" switcher
+export default function manifest() {
+  return {
+    name: 'Next.js App',
+    short_name: 'Next.js App',
+    description: 'Next.js App',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#fff',
+    theme_color: '#fff',
+    icons: [
+      {
+        src: '/favicon.ico',
+        sizes: 'any',
+        type: 'image/x-icon',
+      },
+    ],
+  }
+}
+```
+
+### Manifest Object
+
+The manifest object contains an extensive list of options that may be updated due to new web standards. For information on all the current options, refer to the `MetadataRoute.Manifest` type in your code editor if using [TypeScript](https://nextjs.org/docs/app/building-your-application/configuring/typescript#typescript-plugin) or see the [MDN](https://developer.mozilla.org/docs/Web/Manifest) docs.
+
+
+## opengraph-image
+
+
+---
+title: opengraph-image and twitter-image
+description: API Reference for the Open Graph Image and Twitter Image file conventions.
+---
+
+The `opengraph-image` and `twitter-image` file conventions allow you to set Open Graph and Twitter images for a route segment.
+
+They are useful for setting the images that appear on social networks and messaging apps when a user shares a link to your site.
+
+There are two ways to set Open Graph and Twitter images:
+
+- [Using image files (.jpg, .png, .gif)](#image-files-jpg-png-gif)
+- [Using code to generate images (.js, .ts, .tsx)](#generate-images-using-code-js-ts-tsx)
+
+## Image files (.jpg, .png, .gif)
+
+Use an image file to set a route segment's shared image by placing an `opengraph-image` or `twitter-image` image file in the segment.
+
+Next.js will evaluate the file and automatically add the appropriate tags to your app's `<head>` element.
+
+| File convention                                 | Supported file types            |
+| ----------------------------------------------- | ------------------------------- |
+| [`opengraph-image`](#opengraph-image)           | `.jpg`, `.jpeg`, `.png`, `.gif` |
+| [`twitter-image`](#twitter-image)               | `.jpg`, `.jpeg`, `.png`, `.gif` |
+| [`opengraph-image.alt`](#opengraph-imagealttxt) | `.txt`                          |
+| [`twitter-image.alt`](#twitter-imagealttxt)     | `.txt`                          |
+
+### `opengraph-image`
+
+Add an `opengraph-image.(jpg|jpeg|png|gif)` image file to any route segment.
+
+```html filename="<head> output"
+<meta property="og:image" content="<generated>" />
+<meta property="og:image:type" content="<generated>" />
+<meta property="og:image:width" content="<generated>" />
+<meta property="og:image:height" content="<generated>" />
+```
+
+### `twitter-image`
+
+Add a `twitter-image.(jpg|jpeg|png|gif)` image file to any route segment.
+
+```html filename="<head> output"
+<meta name="twitter:image" content="<generated>" />
+<meta name="twitter:image:type" content="<generated>" />
+<meta name="twitter:image:width" content="<generated>" />
+<meta name="twitter:image:height" content="<generated>" />
+```
+
+### `opengraph-image.alt.txt`
+
+Add an accompanying `opengraph-image.alt.txt` file in the same route segment as the `opengraph-image.(jpg|jpeg|png|gif)` image it's alt text.
+
+```txt filename="opengraph-image.alt.txt"
+About Acme
+```
+
+```html filename="<head> output"
+<meta property="og:image:alt" content="About Acme" />
+```
+
+### `twitter-image.alt.txt`
+
+Add an accompanying `twitter-image.alt.txt` file in the same route segment as the `twitter-image.(jpg|jpeg|png|gif)` image it's alt text.
+
+```txt filename="twitter-image.alt.txt"
+About Acme
+```
+
+```html filename="<head> output"
+<meta property="twitter:image:alt" content="About Acme" />
+```
+
+## Generate images using code (.js, .ts, .tsx)
+
+In addition to using [literal image files](#image-files-jpg-png-gif), you can programmatically **generate** images using code.
+
+Generate a route segment's shared image by creating an `opengraph-image` or `twitter-image` route that default exports a function.
+
+| File convention   | Supported file types |
+| ----------------- | -------------------- |
+| `opengraph-image` | `.js`, `.ts`, `.tsx` |
+| `twitter-image`   | `.js`, `.ts`, `.tsx` |
+
+> **Good to know**
+>
+> - By default, generated images are [**statically optimized**](/docs/app/building-your-application/rendering/server-components#static-rendering-default) (generated at build time and cached) unless they use [dynamic functions](/docs/app/building-your-application/rendering/server-components#server-rendering-strategies#dynamic-functions) or uncached data.
+> - You can generate multiple Images in the same file using [`generateImageMetadata`](/docs/app/api-reference/functions/generate-image-metadata).
+
+The easiest way to generate an image is to use the [ImageResponse](/docs/app/api-reference/functions/image-response) API from `next/server`.
+
+```tsx filename="app/about/opengraph-image.tsx" switcher
+import { ImageResponse } from 'next/og'
+
+// Route segment config
+export const runtime = 'edge'
+
+// Image metadata
+export const alt = 'About Acme'
+export const size = {
+  width: 1200,
+  height: 630,
+}
+
+export const contentType = 'image/png'
+
+// Image generation
+export default async function Image() {
+  // Font
+  const interSemiBold = fetch(
+    new URL('./Inter-SemiBold.ttf', import.meta.url)
+  ).then((res) => res.arrayBuffer())
+
+  return new ImageResponse(
+    (
+      // ImageResponse JSX element
+      <div
+        style={{
+          fontSize: 128,
+          background: 'white',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        About Acme
+      </div>
+    ),
+    // ImageResponse options
+    {
+      // For convenience, we can re-use the exported opengraph-image
+      // size config to also set the ImageResponse's width and height.
+      ...size,
+      fonts: [
+        {
+          name: 'Inter',
+          data: await interSemiBold,
+          style: 'normal',
+          weight: 400,
+        },
+      ],
+    }
+  )
+}
+```
+
+```jsx filename="app/about/opengraph-image.js" switcher
+import { ImageResponse } from 'next/og'
+
+// Route segment config
+export const runtime = 'edge'
+
+// Image metadata
+export const alt = 'About Acme'
+export const size = {
+  width: 1200,
+  height: 630,
+}
+
+export const contentType = 'image/png'
+
+// Image generation
+export default async function Image() {
+  // Font
+  const interSemiBold = fetch(
+    new URL('./Inter-SemiBold.ttf', import.meta.url)
+  ).then((res) => res.arrayBuffer())
+
+  return new ImageResponse(
+    (
+      // ImageResponse JSX element
+      <div
+        style={{
+          fontSize: 128,
+          background: 'white',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        About Acme
+      </div>
+    ),
+    // ImageResponse options
+    {
+      // For convenience, we can re-use the exported opengraph-image
+      // size config to also set the ImageResponse's width and height.
+      ...size,
+      fonts: [
+        {
+          name: 'Inter',
+          data: await interSemiBold,
+          style: 'normal',
+          weight: 400,
+        },
+      ],
+    }
+  )
+}
+```
+
+```html filename="<head> output"
+<meta property="og:image" content="<generated>" />
+<meta property="og:image:alt" content="About Acme" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+```
+
+### Props
+
+The default export function receives the following props:
+
+#### `params` (optional)
+
+An object containing the [dynamic route parameters](/docs/app/building-your-application/routing/dynamic-routes) object from the root segment down to the segment `opengraph-image` or `twitter-image` is colocated in.
+
+```tsx filename="app/shop/[slug]/opengraph-image.tsx" switcher
+export default function Image({ params }: { params: { slug: string } }) {
+  // ...
+}
+```
+
+```jsx filename="app/shop/[slug]/opengraph-image.js" switcher
+export default function Image({ params }) {
+  // ...
+}
+```
+
+| Route                                      | URL         | `params`                  |
+| ------------------------------------------ | ----------- | ------------------------- |
+| `app/shop/opengraph-image.js`              | `/shop`     | `undefined`               |
+| `app/shop/[slug]/opengraph-image.js`       | `/shop/1`   | `{ slug: '1' }`           |
+| `app/shop/[tag]/[item]/opengraph-image.js` | `/shop/1/2` | `{ tag: '1', item: '2' }` |
+| `app/shop/[...slug]/opengraph-image.js`    | `/shop/1/2` | `{ slug: ['1', '2'] }`    |
+
+### Returns
+
+The default export function should return a `Blob` | `ArrayBuffer` | `TypedArray` | `DataView` | `ReadableStream` | `Response`.
+
+> **Good to know**: `ImageResponse` satisfies this return type.
+
+### Config exports
+
+You can optionally configure the image's metadata by exporting `alt`, `size`, and `contentType` variables from `opengraph-image` or `twitter-image` route.
+
+| Option                        | Type                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [`alt`](#alt)                 | `string`                                                                                                        |
+| [`size`](#size)               | `{ width: number; height: number }`                                                                             |
+| [`contentType`](#contenttype) | `string` - [image MIME type](https://developer.mozilla.org/docs/Web/HTTP/Basics_of_HTTP/MIME_types#image_types) |
+
+#### `alt`
+
+```tsx filename="opengraph-image.tsx | twitter-image.tsx" switcher
+export const alt = 'My images alt text'
+
+export default function Image() {}
+```
+
+```jsx filename="opengraph-image.js | twitter-image.js" switcher
+export const alt = 'My images alt text'
+
+export default function Image() {}
+```
+
+```html filename="<head> output"
+<meta property="og:image:alt" content="My images alt text" />
+```
+
+#### `size`
+
+```tsx filename="opengraph-image.tsx | twitter-image.tsx" switcher
+export const size = { width: 1200, height: 630 }
+
+export default function Image() {}
+```
+
+```jsx filename="opengraph-image.js | twitter-image.js" switcher
+export const size = { width: 1200, height: 630 }
+
+export default function Image() {}
+```
+
+```html filename="<head> output"
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+```
+
+#### `contentType`
+
+```tsx filename="opengraph-image.tsx | twitter-image.tsx" switcher
+export const contentType = 'image/png'
+
+export default function Image() {}
+```
+
+```jsx filename="opengraph-image.js | twitter-image.js" switcher
+export const contentType = 'image/png'
+
+export default function Image() {}
+```
+
+```html filename="<head> output"
+<meta property="og:image:type" content="image/png" />
+```
+
+#### Route Segment Config
+
+`opengraph-image` and `twitter-image` are specialized [Route Handlers](/docs/app/building-your-application/routing/route-handlers) that can use the same [route segment configuration](/docs/app/api-reference/file-conventions/route-segment-config) options as Pages and Layouts.
+
+| Option                                                                                             | Type                                                     | Default    |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------- |
+| [`dynamic`](/docs/app/api-reference/file-conventions/route-segment-config#dynamic)                 | `'auto' \| 'force-dynamic' \| 'error' \| 'force-static'` | `'auto'`   |
+| [`revalidate`](/docs/app/api-reference/file-conventions/route-segment-config#revalidate)           | `false \| 'force-cache' \| 0 \| number`                  | `false`    |
+| [`runtime`](/docs/app/api-reference/file-conventions/route-segment-config#runtime)                 | `'nodejs' \| 'edge'`                                     | `'nodejs'` |
+| [`preferredRegion`](/docs/app/api-reference/file-conventions/route-segment-config#preferredregion) | `'auto' \| 'global' \| 'home' \| string \| string[]`     | `'auto'`   |
+
+```tsx filename="app/opengraph-image.tsx" switcher
+export const runtime = 'edge'
+
+export default function Image() {}
+```
+
+```jsx filename="app/opengraph-image.js" switcher
+export const runtime = 'edge'
+
+export default function Image() {}
+```
+
+### Examples
+
+#### Using external data
+
+This example uses the `params` object and external data to generate the image.
+
+> **Good to know**:
+> By default, this generated image will be [statically optimized](/docs/app/building-your-application/rendering/server-components#static-rendering-default). You can configure the individual `fetch` [`options`](/docs/app/api-reference/functions/fetch) or route segments [options](/docs/app/api-reference/file-conventions/route-segment-config#revalidate) to change this behavior.
+
+```tsx filename="app/posts/[slug]/opengraph-image.tsx" switcher
+import { ImageResponse } from 'next/og'
+
+export const runtime = 'edge'
+
+export const alt = 'About Acme'
+export const size = {
+  width: 1200,
+  height: 630,
+}
+export const contentType = 'image/png'
+
+export default async function Image({ params }: { params: { slug: string } }) {
+  const post = await fetch(`https://.../posts/${params.slug}`).then((res) =>
+    res.json()
+  )
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          fontSize: 48,
+          background: 'white',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {post.title}
+      </div>
+    ),
+    {
+      ...size,
+    }
+  )
+}
+```
+
+```jsx filename="app/posts/[slug]/opengraph-image.js" switcher
+import { ImageResponse } from 'next/og'
+
+export const runtime = 'edge'
+
+export const alt = 'About Acme'
+export const size = {
+  width: 1200,
+  height: 630,
+}
+export const contentType = 'image/png'
+
+export default async function Image({ params }) {
+  const post = await fetch(`https://.../posts/${params.slug}`).then((res) =>
+    res.json()
+  )
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          fontSize: 48,
+          background: 'white',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {post.title}
+      </div>
+    ),
+    {
+      ...size,
+    }
+  )
+}
+```
+
+## Version History
+
+| Version   | Changes                                           |
+| --------- | ------------------------------------------------- |
+| `v13.3.0` | `opengraph-image` and `twitter-image` introduced. |
+
+
+## robots
+
+
+---
+title: robots.txt
+description: API Reference for robots.txt file.
+---
+
+Add or generate a `robots.txt` file that matches the [Robots Exclusion Standard](https://en.wikipedia.org/wiki/Robots.txt#Standard) in the **root** of `app` directory to tell search engine crawlers which URLs they can access on your site.
+
+## Static `robots.txt`
+
+```txt filename="app/robots.txt"
+User-Agent: *
+Allow: /
+Disallow: /private/
+
+Sitemap: https://acme.com/sitemap.xml
+```
+
+## Generate a Robots file
+
+Add a `robots.js` or `robots.ts` file that returns a [`Robots` object](#robots-object).
+
+```ts filename="app/robots.ts" switcher
+import { MetadataRoute } from 'next'
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: '/private/',
+    },
+    sitemap: 'https://acme.com/sitemap.xml',
+  }
+}
+```
+
+```js filename="app/robots.js" switcher
+export default function robots() {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: '/private/',
+    },
+    sitemap: 'https://acme.com/sitemap.xml',
+  }
+}
+```
+
+Output:
+
+```txt
+User-Agent: *
+Allow: /
+Disallow: /private/
+
+Sitemap: https://acme.com/sitemap.xml
+```
+
+### Robots object
+
+```tsx
+type Robots = {
+  rules:
+    | {
+        userAgent?: string | string[]
+        allow?: string | string[]
+        disallow?: string | string[]
+        crawlDelay?: number
+      }
+    | Array<{
+        userAgent: string | string[]
+        allow?: string | string[]
+        disallow?: string | string[]
+        crawlDelay?: number
+      }>
+  sitemap?: string | string[]
+  host?: string
+}
+```
+
+## Version History
+
+| Version   | Changes              |
+| --------- | -------------------- |
+| `v13.3.0` | `robots` introduced. |
+
+
+## sitemap
+
+
+---
+title: sitemap.xml
+description: API Reference for the sitemap.xml file.
+---
+
+Add or generate a `sitemap.xml` file that matches the [Sitemaps XML format](https://www.sitemaps.org/protocol.html) in the **root** of `app` directory to help search engine crawlers crawl your site more efficiently.
+
+## Static `sitemap.xml`
+
+```xml filename="app/sitemap.xml"
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://acme.com</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>1</priority>
+  </url>
+  <url>
+    <loc>https://acme.com/about</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://acme.com/blog</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+```
+
+## Generate a Sitemap
+
+Add a `sitemap.js` or `sitemap.ts` file that returns [`Sitemap`](#sitemap-return-type).
+
+```ts filename="app/sitemap.ts" switcher
+import { MetadataRoute } from 'next'
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [
+    {
+      url: 'https://acme.com',
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 1,
+    },
+    {
+      url: 'https://acme.com/about',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://acme.com/blog',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    },
+  ]
+}
+```
+
+```js filename="app/sitemap.js" switcher
+export default function sitemap() {
+  return [
+    {
+      url: 'https://acme.com',
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 1,
+    },
+    {
+      url: 'https://acme.com/about',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://acme.com/blog',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    },
+  ]
+}
+```
+
+Output:
+
+```xml filename="acme.com/sitemap.xml"
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://acme.com</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>1</priority>
+  </url>
+  <url>
+    <loc>https://acme.com/about</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://acme.com/blog</loc>
+    <lastmod>2023-04-06T15:02:24.021Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+```
+
+### Sitemap Return Type
+
+```tsx
+type Sitemap = Array<{
+  url: string
+  lastModified?: string | Date
+  changeFrequency?:
+    | 'always'
+    | 'hourly'
+    | 'daily'
+    | 'weekly'
+    | 'monthly'
+    | 'yearly'
+    | 'never'
+  priority?: number
+}>
+```
+
+> **Good to know**
+>
+> - In the future, we will support multiple sitemaps and sitemap indexes.
+
+## Version History
+
+| Version   | Changes                                                      |
+| --------- | ------------------------------------------------------------ |
+| `v13.3.0` | `sitemap` introduced.                                        |
+| `v13.4.5` | Add `changeFrequency` and `priority` attributes to sitemaps. |

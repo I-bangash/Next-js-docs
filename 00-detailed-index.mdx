@@ -1,0 +1,1162 @@
+# Next.js Documentation Index
+
+Welcome to the Next.js documentation. Below is an index of the main sections with their corresponding subsections.
+
+## Table of Contents
+
+### 01-getting-started-index
+- Documentation
+- 000--index
+- Frequently Asked Questions
+- How can I access the request object in a layout?
+- How can I access the URL on a page?
+- How can I redirect from a Server Component?
+- How can I handle authentication with the App Router?
+- How can I set cookies?
+- How can I build multi-tenant apps?
+- How can I invalidate the App Router cache?
+- Are there any comprehensive, open-source applications built on the App Router?
+- Learn More
+- 00-index
+- 01-getting-started-01-installation
+- Automatic Installation
+- Manual Installation
+- Creating directories
+- The `app` directory
+- The `pages` directory (optional)
+- The `public` folder (optional)
+- Run the Development Server
+- 01-getting-started-02-project-structure
+- Top-level folders
+- Top-level files
+- `app` Routing Conventions
+- Routing Files
+- Nested Routes
+- Dynamic Routes
+- Route Groups and Private Folders
+- Parallel and Intercepted Routes
+- Metadata File Conventions
+- App Icons
+- Open Graph and Twitter Images
+- SEO
+- `pages` Routing Conventions
+- Special Files
+- Routes
+- Dynamic Routes
+- 01-getting-started-index
+- 01-server-components
+- Benefits of Server Rendering
+- Using Server Components in Next.js
+- How are Server Components rendered?
+- Server Rendering Strategies
+- Static Rendering (Default)
+- Dynamic Rendering
+- Switching to Dynamic Rendering
+- Dynamic Functions
+- Streaming
+
+### 02-routing
+- Routing
+- client-components
+- Benefits of Client Rendering
+- Using Client Components in Next.js
+- How are Client Components Rendered?
+- Full page load
+- Subsequent Navigations
+- Going back to the Server Environment
+- routing-01-defining-routes
+- Creating Routes
+- Creating UI
+- routing-02-pages-and-layouts
+- Pages
+- Layouts
+- Root Layout (Required)
+- Nesting Layouts
+- Templates
+- Modifying `<head>`
+- routing-03-linking-and-navigating
+- `<Link>` Component
+- Examples
+- Linking to Dynamic Segments
+- Checking Active Links
+- Scrolling to an `id`
+- Disabling scroll restoration
+- `useRouter()` Hook
+- How Routing and Navigation Works
+- 1. Prefetching
+- 2. Caching
+- 3. Partial Rendering
+- 4. Soft Navigation
+- 5. Back and Forward Navigation
+- routing-04-route-groups
+- Convention
+- Examples
+- Organize routes without affecting the URL path
+- Opting specific segments into a layout
+- Creating multiple root layouts
+- routing-05-dynamic-routes
+- Convention
+- Example
+- Generating Static Params
+- Catch-all Segments
+- Optional Catch-all Segments
+- TypeScript
+- routing-06-loading-ui-and-streaming
+- Instant Loading States
+- Streaming with Suspense
+- What is Streaming?
+- Example
+- SEO
+- Status Codes
+- routing-07-error-handling
+- How `error.js` Works
+- Recovering From Errors
+- Nested Routes
+- Handling Errors in Layouts
+- Handling Errors in Root Layouts
+- Handling Server Errors
+- Securing Sensitive Error Information
+- routing-08-parallel-routes
+- Convention
+- Unmatched Routes
+- `default.js`
+- Navigation
+- Reload
+- `useSelectedLayoutSegment(s)`
+- Examples
+- Modals
+- Dismissing a modal
+- Conditional Routes
+- routing-09-intercepting-routes
+- Convention
+- Examples
+- Modals
+- routing-10-route-handlers
+- Convention
+- Supported HTTP Methods
+- Extended `NextRequest` and `NextResponse` APIs
+- Behavior
+- Caching
+- Opting out of caching
+- Route Resolution
+- Examples
+- Revalidating Cached Data
+- Dynamic Functions
+- Cookies
+- Headers
+- Redirects
+- Dynamic Route Segments
+- URL Query Parameters
+- Streaming
+- Request Body
+- Request Body FormData
+- CORS
+- Edge and Node.js Runtimes
+- Non-UI Responses
+- Segment Config Options
+- routing-11-middleware
+- Convention
+- Example
+- Matching Paths
+- Matcher
+- Conditional Statements
+- NextResponse
+- Using Cookies
+- Setting Headers
+- Producing a Response
+- Advanced Middleware Flags
+- Version History
+- routing-12-colocation
+- Safe colocation by default
+- Project organization features
+- Private Folders
+- Route Groups
+- `src` Directory
+- Module Path Aliases
+- Project organization strategies
+- Store project files outside of `app`
+- Store project files in top-level folders inside of `app`
+- Split project files by feature or route
+- routing-13-internationalization
+- Terminology
+- Routing Overview
+- Localization
+- Static Generation
+- Resources
+- routing-index
+- Terminology
+- The `app` Router
+- Roles of Folders and Files
+- Route Segments
+- Nested Routes
+- File Conventions
+- Component Hierarchy
+- Colocation
+- Advanced Routing Patterns
+- Next Steps
+
+### 03-data-fetching
+- Data Fetching
+- composition-patterns
+- When to use Server and Client Components?
+- Server Component Patterns
+- Sharing data between components
+- Keeping Server-only Code out of the Client Environment
+- Using Third-party Packages and Providers
+- Using Context Providers
+- Advice for Library Authors
+- Client Components
+- Moving Client Components Down the Tree
+- Passing props from Server to Client Components (Serialization)
+- Interleaving Server and Client Components
+- Unsupported Pattern: Importing Server Components into Client Components
+- Supported Pattern: Passing Server Components to Client Components as Props
+- data-fetching01-fetching-caching-and-revalidating
+- Fetching Data on the Server with `fetch`
+- Caching Data
+- Revalidating Data
+- Time-based Revalidation
+- On-demand Revalidation
+- Error handling and revalidation
+- Opting out of Data Caching
+- Individual `fetch` Requests
+- Multiple `fetch` Requests
+- Fetching data on the Server with third-party libraries
+- Example
+- Fetching Data on the Client with Route Handlers
+- Fetching Data on the Client with third-party libraries
+- data-fetching02-patterns
+- Fetching Data on the Server
+- Fetching Data Where It's Needed
+- Streaming
+- Parallel and Sequential Data Fetching
+- Sequential Data Fetching
+- Parallel Data Fetching
+- Preloading Data
+- Using React `cache`, `server-only`, and the Preload Pattern
+- data-fetching03-forms-and-mutations
+- How Server Actions Work
+- Revalidating Cached Data
+- Examples
+- Server-only Forms
+- Revalidating Data
+- Redirecting
+- Form Validation
+- Displaying Loading State
+- Error Handling
+- Optimistic Updates
+- Setting Cookies
+- Reading Cookies
+- Deleting Cookies
+- data-fetchingindex
+
+### 04-caching
+- Caching
+- 04-caching
+- Overview
+- Request Memoization
+- Duration
+- Revalidating
+- Opting out
+- Data Cache
+- Duration
+- Revalidating
+- Time-based Revalidation
+- On-demand Revalidation
+- Opting out
+- Full Route Cache
+- 1. React Rendering on the Server
+- 2. Next.js Caching on the Server (Full Route Cache)
+- 3. React Hydration and Reconciliation on the Client
+- 4. Next.js Caching on the Client (Router Cache)
+- 5. Subsequent Navigations
+- Static and Dynamic Rendering
+- Duration
+- Invalidation
+- Opting out
+- Router Cache
+- Duration
+- Invalidation
+- Opting out
+- Cache Interactions
+- Data Cache and Full Route Cache
+- Data Cache and Client-side Router cache
+- APIs
+- `<Link>`
+- `router.prefetch`
+- `router.refresh`
+- `fetch`
+- `fetch options.cache`
+- `fetch options.next.revalidate`
+- `fetch options.next.tags` and `revalidateTag`
+- `revalidatePath`
+- Dynamic Functions
+- `cookies`
+- Segment Config Options
+- `generateStaticParams`
+- React `cache` function
+- edge-and-nodejs-runtimes
+- Runtime Differences
+- Edge Runtime
+- Node.js Runtime
+- Serverless Node.js
+- Examples
+- Segment Runtime Option
+
+### 05-styling
+- Styling
+- 01-css-modules
+- Example
+- Global Styles
+- External Stylesheets
+- Import styles from `node_modules`
+- Additional Features
+- 02-tailwind-css
+- Installing Tailwind
+- Configuring Tailwind
+- Importing Styles
+- Using Classes
+- Importing Styles
+- Using Classes
+- Usage with Turbopack
+- 03-css-in-js
+- Configuring CSS-in-JS in `app`
+- `styled-jsx`
+- Styled Components
+- Disabling JavaScript
+- 04-sass
+- Customizing Sass Options
+- Sass Variables
+- index
+
+### 06-optimizing
+- Optimizing
+- 01-images
+- Usage
+- Local Images
+- Remote Images
+- Domains
+- Loaders
+- Priority
+- Image Sizing
+- Styling
+- Examples
+- Responsive
+- Fill Container
+- Background Image
+- Other Properties
+- Configuration
+- 02-fonts
+- Google Fonts
+- Apply the font in `<head>`
+- Single page usage
+- Specifying a subset
+- Using Multiple Fonts
+- Local Fonts
+- With Tailwind CSS
+- Preloading
+- Reusing fonts
+- 03-scripts
+- Layout Scripts
+- Application Scripts
+- Strategy
+- Offloading Scripts To A Web Worker (Experimental)
+- Inline Scripts
+- Executing Additional Code
+- Additional Attributes
+- 04-metadata
+- Static Metadata
+- Dynamic Metadata
+- File-based metadata
+- Behavior
+- Default Fields
+- Ordering
+- Merging
+- Overwriting fields
+- Inheriting fields
+- Dynamic Image Generation
+- JSON-LD
+- 05-static-assets
+- 06-lazy-loading
+- `next/dynamic`
+- Examples
+- Importing Client Components
+- Skipping SSR
+- Importing Server Components
+- Loading External Libraries
+- Adding a custom loading component
+- Importing Named Exports
+- With named exports
+- With no SSR
+- With external libraries
+- 07-analytics
+- Build Your Own
+- Web Vitals
+- Custom metrics
+- Sending results to external systems
+- TypeScript
+- 08-open-telemetry
+- Getting Started
+- Using `@vercel/otel`
+- Manual OpenTelemetry configuration
+- Testing your instrumentation
+- Deployment
+- Using OpenTelemetry Collector
+- Deploying on Vercel
+- Self-hosting
+- Custom Exporters
+- Custom Spans
+- Default Spans in Next.js
+- `[http.method] [next.route]`
+- `render route (app) [next.route]`
+- `fetch [http.method] [http.url]`
+- `executing api route (app) [next.route]`
+- `getServerSideProps [next.route]`
+- `getStaticProps [next.route]`
+- `render route (pages) [next.route]`
+- `generateMetadata [next.page]`
+- 09-instrumentation
+- 10-third-party-libraries
+- Getting Started
+- Google Third-Parties
+- Google Tag Manager
+- Sending Events
+- Options
+- Google Maps Embed
+- Options
+- YouTube Embed
+- Options
+- index
+- Built-in Components
+- Metadata
+- Static Assets
+- Analytics and Monitoring
+
+### 07-configuring
+- Configuring
+- 01-typescript
+- New Projects
+- Existing Projects
+- TypeScript Plugin
+- Plugin Features
+- Minimum TypeScript Version
+- Statically Typed Links
+- End-to-End Type Safety
+- Async Server Component TypeScript Error
+- Passing Data Between Server & Client Components
+- Static Generation and Server-side Rendering
+- API Routes
+- Custom `App`
+- Path aliases and baseUrl
+- Type checking next.config.js
+- Incremental type checking
+- Ignoring TypeScript Errors
+- Version Changes
+- 02-eslint
+- ESLint Config
+- ESLint Plugin
+- Custom Settings
+- `rootDir`
+- Linting Custom Directories and Files
+- Caching
+- Disabling Rules
+- Core Web Vitals
+- Usage With Other Tools
+- Prettier
+- lint-staged
+- Migrating Existing Config
+- Recommended Plugin Ruleset
+- Additional Configurations
+- 03-environment-variables
+- Loading Environment Variables
+- Referencing Other Variables
+- Bundling Environment Variables for the Browser
+- Default Environment Variables
+- Environment Variables on Vercel
+- Test Environment Variables
+- Environment Variable Load Order
+- Good to know
+- Version History
+- 04-absolute-imports-and-module-aliases
+- Absolute Imports
+- Module Aliases
+- 05-mdx
+- `@next/mdx`
+- Getting Started
+- Welcome to my MDX page!
+- Remote MDX
+- Layouts
+- Welcome to my MDX page!
+- Remark and Rehype Plugins
+- Frontmatter
+- My MDX page
+- Custom Elements
+- Deep Dive: How do you transform markdown into HTML?
+- Using the Rust-based MDX compiler (Experimental)
+- Helpful Links
+- 06-src-directory
+- 11-draft-mode
+- Step 1: Create and access the Route Handler
+- Securely accessing it from your Headless CMS
+- Step 2: Update page
+- More Details
+- Clear the Draft Mode cookie
+- Unique per `next build`
+- 15-content-security-policy
+- Nonces
+- Why use a nonce?
+- Adding a nonce with Middleware
+- Reading the nonce
+- Version History
+- index
+
+### 08-deploying-upgrading
+- Deploying and Upgrading
+- 01-static-exports
+- Configuration
+- Supported Features
+- Server Components
+- Client Components
+- Supported Features
+- Image Optimization
+- Route Handlers
+- Browser APIs
+- Unsupported Features
+- Deploying
+- Version History
+- index
+- Next.js Build API
+- Managed Next.js with Vercel
+- Self-Hosting
+- Node.js Server
+- Docker Image
+- Static HTML Export
+- Other Services
+- Managed Server
+- Static Only
+- Serverless
+- Automatic Updates
+- Manual Graceful shutdowns
+- 03-from-vite
+- Why Switch?
+- Migration Steps
+- Step 1: Install the Next.js Dependency
+- Step 2: Create the Next.js Configuration File
+- Step 3: Update TypeScript Configuration
+- Step 4: Create the Root Layout
+- Step 5: Create the Entrypoint Page
+- Step 6: Update Static Image Imports
+- Step 7: Migrate the Environment Variables
+- ...
+- Step 8: Update Scripts in `package.json`
+- ...
+- Step 9: Clean Up
+- Next Steps
+
+### 09-upgrading
+- Upgrading
+- 01-codemods
+- Usage
+- Next.js Codemods
+- 14.0
+- Migrate `ImageResponse` imports
+- `next-og-import`
+- Use `viewport` export
+- `metadata-to-viewport-export`
+- 13.2
+- Use Built-in Font
+- `built-in-next-font`
+- 13.0
+- Rename Next Image Imports
+- `next-image-to-legacy-image`
+- Migrate to the New Image Component
+- `next-image-experimental`
+- Remove `<a>` Tags From Link Components
+- `new-link`
+- 11
+- Migrate from CRA
+- `cra-to-next`
+- 10
+- Add React imports
+- `add-missing-react-import`
+- 9
+- Transform Anonymous Components into Named Components
+- `name-default-component`
+- 8
+- Transform AMP HOC into page config
+- `withamp-to-config`
+- 6
+- Use `withRouter`
+- `url-to-withrouter`
+- 02-app-router-migration
+- Upgrading
+- Node.js Version
+- Next.js Version
+- ESLint Version
+- Next Steps
+- Upgrading New Features
+- `<Image/>` Component
+- `<Link>` Component
+- `<Script>` Component
+- Font Optimization
+- Migrating from `pages` to `app`
+- Step 1: Creating the `app` directory
+- Step 2: Creating a Root Layout
+- Migrating `_document.js` and `_app.js`
+- Migrating the `getLayout()` pattern to Layouts (Optional)
+- Step 3: Migrating `next/head`
+- Step 4: Migrating Pages
+- Step 5: Migrating Routing Hooks
+- Step 6: Migrating Data Fetching Methods
+- Server-side Rendering (`getServerSideProps`)
+- Accessing Request Object
+- Static Site Generation (`getStaticProps`)
+- Dynamic paths (`getStaticPaths`)
+- Replacing `fallback`
+- Incremental Static Regeneration (`getStaticProps` with `revalidate`)
+- API Routes
+- Step 7: Styling
+- Tailwind CSS
+- Codemods
+- index
+
+### 11-api-components
+- API Components
+- index
+- font
+- Font Function Arguments
+- `src`
+- `weight`
+- `style`
+- `subsets`
+- `axes`
+- `display`
+- `preload`
+- `fallback`
+- `adjustFontFallback`
+- `variable`
+- `declarations`
+- Applying Styles
+- `className`
+- `style`
+- CSS Variables
+- Using a font definitions file
+- Version Changes
+- image
+- Props
+- Required Props
+- `src`
+- `width`
+- `height`
+- `alt`
+- Optional Props
+- `loader`
+- `fill`
+- `sizes`
+- `quality`
+- `priority`
+- `placeholder`
+- Advanced Props
+- `style`
+- `onLoadingComplete`
+- `onLoad`
+- `onError`
+- `loading`
+- `blurDataURL`
+- `unoptimized`
+- Other Props
+- Configuration Options
+- `remotePatterns`
+- `domains`
+- `loaderFile`
+- Advanced
+- `deviceSizes`
+- `imageSizes`
+- `formats`
+- Caching Behavior
+- `minimumCacheTTL`
+- `disableStaticImages`
+- `dangerouslyAllowSVG`
+- Animated Images
+- Responsive Images
+- Responsive image using a static import
+- Responsive image with aspect ratio
+- Responsive image with `fill`
+- Theme Detection
+- Known Browser Bugs
+- Version History
+- index
+- link
+- Props
+- `href` (required)
+- `replace`
+- `scroll`
+- `prefetch`
+- Other Props
+- `legacyBehavior`
+- `passHref`
+- `scroll`
+- `shallow`
+- `locale`
+- Examples
+- Linking to Dynamic Routes
+- If the child is a custom component that wraps an `<a>` tag
+- If the child is a functional component
+- With URL Object
+- Replace the URL instead of push
+- Disable scrolling to the top of the page
+- Middleware
+- Version History
+- script
+- Props
+- Required Props
+- `src`
+- Optional Props
+- `strategy`
+- `beforeInteractive`
+- `afterInteractive`
+- `lazyOnload`
+- `worker`
+- `onLoad`
+- `onReady`
+- `onError`
+- Version History
+
+### 12-api-metadata
+- API Metadata
+- app-icons
+- Image files (.ico, .jpg, .png)
+- `favicon`
+- `icon`
+- `apple-icon`
+- Generate icons using code (.js, .ts, .tsx)
+- Props
+- `params` (optional)
+- Returns
+- Config exports
+- `size`
+- `contentType`
+- Route Segment Config
+- Version History
+- index
+- manifest
+- Static Manifest file
+- Generate a Manifest file
+- Manifest Object
+- opengraph-image
+- Image files (.jpg, .png, .gif)
+- `opengraph-image`
+- `twitter-image`
+- `opengraph-image.alt.txt`
+- `twitter-image.alt.txt`
+- Generate images using code (.js, .ts, .tsx)
+- Props
+- `params` (optional)
+- Returns
+- Config exports
+- `alt`
+- `size`
+- `contentType`
+- Route Segment Config
+- Examples
+- Using external data
+- Version History
+- robots
+- Static `robots.txt`
+- Generate a Robots file
+- Robots object
+- Version History
+- sitemap
+- Static `sitemap.xml`
+- Generate a Sitemap
+- Sitemap Return Type
+- Version History
+
+### 12.1-api-file-conventions
+- API File Conventions
+- default
+- error
+- Props
+- `error`
+- `error.message`
+- `error.digest`
+- `reset`
+- `global-error.js`
+- not-found.js
+- Version History
+- index
+- layout
+- Props
+- `children` (required)
+- `params` (optional)
+- Good to know
+- Layouts do not receive `searchParams`
+- Root Layouts
+- Version History
+- loading
+- Version History
+- not-found
+- Props
+- Data Fetching
+- Version History
+- page
+- Props
+- `params` (optional)
+- `searchParams` (optional)
+- Version History
+- route-segment-config
+- Options
+- `dynamic`
+- `dynamicParams`
+- `revalidate`
+- Revalidation Frequency
+- `fetchCache`
+- Cross-route segment behavior
+- `runtime`
+- `preferredRegion`
+- `maxDuration`
+- `generateStaticParams`
+- route
+- HTTP Methods
+- Parameters
+- `request` (optional)
+- `context` (optional)
+- NextResponse
+- Version History
+- template
+- Props
+- `children` (required)
+- Version History
+
+### 13-api-functions
+- API Functions
+- cookies
+- `cookies().get(name)`
+- `cookies().getAll()`
+- `cookies().has(name)`
+- `cookies().set(name, value, options)`
+- Deleting cookies
+- `cookies().delete(name)`
+- `cookies().set(name, '')`
+- `cookies().set(name, value, { maxAge: 0 })`
+- `cookies().set(name, value, { expires: timestamp })`
+- Version History
+- draft-mode
+- Version History
+- fetch
+- `fetch(url, options)`
+- `options.cache`
+- `options.next.revalidate`
+- `options.next.tags`
+- Version History
+- generate-image-metadata
+- Parameters
+- `params` (optional)
+- Returns
+- Examples
+- Using external data
+- Version History
+- generate-metadata
+- The `metadata` object
+- `generateMetadata` function
+- Parameters
+- Returns
+- Metadata Fields
+- `title`
+- String
+- Template object
+- Default
+- Template
+- Absolute
+- `description`
+- Basic Fields
+- `metadataBase`
+- Default value
+- URL Composition
+- `openGraph`
+- `robots`
+- `icons`
+- `themeColor`
+- `manifest`
+- `twitter`
+- `viewport`
+- `verification`
+- `appleWebApp`
+- `alternates`
+- `appLinks`
+- `archives`
+- `assets`
+- `bookmarks`
+- `category`
+- `other`
+- Unsupported Metadata
+- Resource hints
+- `<link rel="preload">`
+- `<link rel="preconnect">`
+- `<link rel="dns-prefetch">`
+- Types
+- `metadata` object
+- `generateMetadata` function
+- Regular function
+- Async function
+- With segment props
+- With parent metadata
+- JavaScript Projects
+- Version History
+- generate-static-params
+- Parameters
+- Returns
+- Single Dynamic Segment
+- Multiple Dynamic Segments
+- Catch-all Dynamic Segment
+- Examples
+- Multiple Dynamic Segments in a Route
+- Generate params from the bottom up
+- Generate params from the top down
+- Version History
+- generate-viewport
+- The `viewport` object
+- `generateViewport` function
+- Viewport Fields
+- `themeColor`
+- `width`, `initialScale`, and `maximumScale`
+- `colorScheme`
+- Types
+- `viewport` object
+- `generateViewport` function
+- Regular function
+- With segment props
+- JavaScript Projects
+- Version History
+- headers
+- `headers()`
+- API Reference
+- Parameters
+- Returns
+- Examples
+- Usage with Data Fetching
+- Version History
+- image-response
+- Supported CSS Properties
+- Version History
+- index
+- next-request
+- `cookies`
+- `set(name, value)`
+- `get(name)`
+- `getAll()`
+- `delete(name)`
+- `has(name)`
+- `clear()`
+- `nextUrl`
+- Version History
+- next-response
+- `cookies`
+- `set(name, value)`
+- `get(name)`
+- `getAll()`
+- `delete(name)`
+- `json()`
+- `redirect()`
+- `rewrite()`
+- `next()`
+- not-found
+- `notFound()`
+- Version History
+- permanentRedirect
+- Parameters
+- Returns
+- Example
+- redirect
+- Parameters
+- Returns
+- Example
+- revalidatePath
+- Parameters
+- Returns
+- Examples
+- Revalidating A Specific URL
+- Revalidating A Page Path
+- Revalidating A Layout Path
+- Revalidating All Data
+- Server Action
+- Route Handler
+- revalidateTag
+- Parameters
+- Returns
+- Examples
+- Server Action
+- Route Handler
+- server-actions
+- Convention
+- With Server Components
+- With Client Components
+- Import
+- Props
+- Binding Arguments
+- Invocation
+- Progressive Enhancement
+- Size Limitation
+- Additional Resources
+- unstable_cache
+- Parameters
+- Returns
+- unstable_noStore
+- Usage
+- Version History
+- use-params
+- Parameters
+- Returns
+- Version History
+- use-pathname
+- Parameters
+- Returns
+- Examples
+- Do something in response to a route change
+- use-report-web-vitals
+- useReportWebVitals
+- Web Vitals
+- Custom Metrics
+- Usage on Vercel
+- Sending results to external systems
+- use-router
+- `useRouter()`
+- Migrating from `next/router`
+- Examples
+- Router events
+- Disabling scroll restoration
+- Version History
+- use-search-params
+- Parameters
+- Returns
+- Behavior
+- Static Rendering
+- Dynamic Rendering
+- Server Components
+- Pages
+- Layouts
+- Examples
+- Updating `searchParams`
+- Version History
+- use-selected-layout-segment
+- Parameters
+- Returns
+- Examples
+- Creating an active link component
+- Version History
+- use-selected-layout-segments
+- Parameters
+- Returns
+- Version History
+
+### 14-next-config-js
+- Next.js Config
+- appDir
+- assetPrefix
+- basePath
+- Links
+- Images
+- compress
+- devIndicators
+- distDir
+- env
+- eslint
+- exportPathMap
+- Adding a trailing slash
+- Customizing the output directory
+- generateBuildId
+- generateEtags
+- headers
+- Header Overriding Behavior
+- Path Matching
+- Wildcard Path Matching
+- Regex Path Matching
+- Header, Cookie, and Query Matching
+- Headers with basePath support
+- Headers with i18n support
+- Cache-Control
+- Options
+- X-DNS-Prefetch-Control
+- Strict-Transport-Security
+- X-Frame-Options
+- Permissions-Policy
+- X-Content-Type-Options
+- Referrer-Policy
+- Content-Security-Policy
+- Version History
+- httpAgentOptions
+- images
+- Example Loader Configuration
+- Akamai
+- Cloudinary
+- Cloudflare
+- Contentful
+- Fastly
+- Gumlet
+- ImageEngine
+- Imgix
+- Thumbor
+- Sanity
+- Supabase
+- incrementalCacheHandlerPath
+- API Reference
+- `get()`
+- `set()`
+- `revalidateTag()`
+- index
+- logging
+- mdxRs
+- onDemandEntries
+- optimizePackageImports
+- output
+- How it Works
+- Automatically Copying Traced Files
+- Caveats
+- Experimental `turbotrace`
+- pageExtensions
+- Including non-page files in the `pages` directory
+- poweredByHeader
+- productionBrowserSourceMaps
+- reactStrictMode
+- redirects
+- Path Matching
+- Wildcard Path Matching
+- Regex Path Matching
+- Header, Cookie, and Query Matching
+- Redirects with basePath support
+- Redirects with i18n support
+- Other Redirects
+- Version History
+- rewrites
+- Rewrite parameters
+- Path Matching
+- Wildcard Path Matching
+- Regex Path Matching
+- Header, Cookie, and Query Matching
+- Rewriting to an external URL
+- Incremental adoption of Next.js
+- Rewrites with basePath support
+- Rewrites with i18n support
+- Version History
+- serverComponentsExternalPackages
+- trailingSlash
+- Version History
+- transpilePackages
+- Version History
+- turbo
+- webpack loaders
+- Resolve Alias
+- typedRoutes
+- typescript
+- urlImports
+- Security Model
+- Lockfile
+- Examples
+- Skypack
+- Static Image Imports
+- URLs in CSS
+- Asset Imports
+- webVitalsAttribution
+- webpack
+- `nextRuntime`
+

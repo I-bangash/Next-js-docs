@@ -1,0 +1,610 @@
+# Documentation
+
+
+# 000--index
+---
+title: App Router
+description: Use the new App Router with Next.js' and React's latest features, including Layouts, Server Components, Suspense, and more.
+---
+
+The Next.js App Router is a new paradigm for building applications using React's latest features. If you're already familiar with Next.js, you'll find that the App Router is a natural evolution of the existing file-system based router in the [Pages Router](/docs/pages).
+
+For new applications, **we recommend using the App Router**. For existing applications, you can [incrementally adopt the App Router](/docs/app/building-your-application/upgrading/app-router-migration). It's also possible to use both routers in the same application.
+
+## Frequently Asked Questions
+
+### How can I access the request object in a layout?
+
+You intentionally cannot access the raw request object. However, you can access [`headers`](/docs/app/api-reference/functions/headers) and [`cookies`](/docs/app/api-reference/functions/cookies) through server-only functions. You can also [set cookies](#how-can-i-set-cookies).
+
+[Layouts](/docs/app/building-your-application/routing/pages-and-layouts#layouts) do not rerender. They can be cached and reused to avoid unnecessary computation when navigating between pages. By restricting layouts from accessing the raw request, Next.js can prevent the execution of potentially slow or expensive user code within the layout, which could negatively impact performance.
+
+This design also enforces consistent and predictable behavior for layouts across different pages, simplify development and debugging since developers can rely on layouts behaving the same way regardless of the specific page they are applied to.
+
+Depending on the UI pattern you're building, [Parallel Routes](/docs/app/building-your-application/routing/parallel-routes) allow you to render multiple pages in the same layout, and pages have access to the route segments as well as the URL search params.
+
+### How can I access the URL on a page?
+
+By default, pages are Server Components. You can access the route segments through the [`params`](/docs/app/api-reference/file-conventions/page#params-optional) prop and the URL search params through the [`searchParams`](/docs/app/api-reference/file-conventions/page#searchparams-optional) prop for a given page.
+
+If you are using Client Components, you can use [`usePathname`](/docs/app/api-reference/functions/use-pathname), [`useSelectedLayoutSegment`](/docs/app/api-reference/functions/use-selected-layout-segment), and [`useSelectedLayoutSegments`](/docs/app/api-reference/functions/use-selected-layout-segments) for more complex routes.
+
+Further, depending on the UI pattern you're building, [Parallel Routes](/docs/app/building-your-application/routing/parallel-routes) allow you to render multiple pages in the same layout, and pages have access to the route segments as well as the URL search params.
+
+### How can I redirect from a Server Component?
+
+You can use [`redirect`](/docs/app/api-reference/functions/redirect) to redirect from a page to a relative or absolute URL. [`redirect`](/docs/app/api-reference/functions/redirect) is a temporary (307) redirect, while [`permanentRedirect`](/docs/app/api-reference/functions/permanentRedirect) is a permanent (308) redirect. When these functions are used while streaming UI, they will insert a meta tag to emit the redirect on the client side.
+
+### How can I handle authentication with the App Router?
+
+Here are some common authentication solutions that support the App Router:
+
+- [NextAuth.js](https://next-auth.js.org/configuration/nextjs#in-app-router)
+- [Clerk](https://clerk.com/docs/quickstarts/nextjs)
+- [Auth0](https://github.com/auth0/nextjs-auth0#app-router)
+- [Stytch](https://stytch.com/docs/example-apps/frontend/nextjs)
+- Or manually handling sessions or JWTs
+
+### How can I set cookies?
+
+You can set cookies in [Server Actions](/docs/app/building-your-application/data-fetching/forms-and-mutations#setting-cookies) or [Route Handlers](/docs/app/building-your-application/routing/route-handlers) using the [`cookies`](/docs/app/api-reference/functions/cookies) function.
+
+Since HTTP does not allow setting cookies after streaming starts, you cannot set cookies from a page or layout directly. You can also set cookies from [Middleware](/docs/app/building-your-application/routing/middleware#using-cookies).
+
+### How can I build multi-tenant apps?
+
+If you are looking to build a single Next.js application that serves multiple tenants, we have [built an example](https://vercel.com/templates/next.js/platforms-starter-kit) showing our recommended architecture.
+
+### How can I invalidate the App Router cache?
+
+There are multiple layers of caching in Next.js, and thus, multiple ways to invalidate different parts of the cache. [Learn more about caching](/docs/app/building-your-application/caching).
+
+### Are there any comprehensive, open-source applications built on the App Router?
+
+Yes. You can view [Next.js Commerce](https://vercel.com/templates/next.js/nextjs-commerce) or the [Platforms Starter Kit](https://vercel.com/templates/next.js/platforms-starter-kit) for two larger examples of using the App Router that are open-source.
+
+## Learn More
+
+- [Routing Fundamentals](/docs/app/building-your-application/routing)
+- [Data Fetching, Caching, and Revalidating](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating)
+- [Forms and Mutations](/docs/app/building-your-application/data-fetching/forms-and-mutations)
+- [Caching](/docs/app/building-your-application/caching)
+- [Rendering Fundamentals](/docs/app/building-your-application/rendering)
+- [Server Components](/docs/app/building-your-application/rendering/server-components)
+- [Client Components](/docs/app/building-your-application/rendering/client-components)
+
+
+
+
+
+# 00-index
+---
+title: Building Your Application
+description: Learn how to use Next.js features to build your application.
+---
+
+{/* The content of this doc is shared between the app and pages router. You can use the `<PagesOnly>Content</PagesOnly>` component to add content that is specific to the Pages Router. Any shared content should not be wrapped in a component. */}
+
+Next.js provides the building blocks to create flexible, full-stack web applications. The guides in **Building Your Application** explain how to use these features and how to customize your application's behavior.
+
+The sections and pages are organized sequentially, from basic to advanced, so you can follow them step-by-step when building your Next.js application. However, you can read them in any order or skip to the pages that apply to your use case.
+
+<AppOnly>
+
+If you're new to Next.js, we recommend starting with the [Routing](/docs/app/building-your-application/routing), [Rendering](/docs/app/building-your-application/rendering), [Data Fetching](/docs/app/building-your-application/data-fetching) and [Styling](/docs/app/building-your-application/styling) sections, as they introduce the fundamental Next.js and web concepts to help you get started. Then, you can dive deeper into the other sections such as [Optimizing](/docs/app/building-your-application/optimizing) and [Configuring](/docs/app/building-your-application/configuring). Finally, once you're ready, checkout the [Deploying](/docs/app/building-your-application/deploying) and [Upgrading](/docs/app/building-your-application/upgrading) sections.
+
+</AppOnly>
+
+<PagesOnly>
+
+If you're new to Next.js, we recommend starting with the [Routing](/docs/pages/building-your-application/routing), [Rendering](/docs/pages/building-your-application/rendering), [Data Fetching](/docs/pages/building-your-application/data-fetching) and [Styling](/docs/pages/building-your-application/styling) sections, as they introduce the fundamental Next.js and web concepts to help you get started. Then, you can dive deeper into the other sections such as [Optimizing](/docs/pages/building-your-application/optimizing) and [Configuring](/docs/pages/building-your-application/configuring). Finally, once you're ready, checkout the [Deploying](/docs/pages/building-your-application/deploying) and [Upgrading](/docs/pages/building-your-application/upgrading) sections.
+
+</PagesOnly>
+
+
+
+
+
+# 01-getting-started-01-installation
+---
+title: Installation
+description: Create a new Next.js application with `create-next-app`. Set up TypeScript, styles, and configure your `next.config.js` file.
+related:
+  title: Next Steps
+  description: Learn about the files and folders in your Next.js project.
+  links:
+    - getting-started/project-structure
+---
+
+System Requirements:
+
+- [Node.js 18.17](https://nodejs.org/) or later.
+- macOS, Windows (including WSL), and Linux are supported.
+
+## Automatic Installation
+
+We recommend starting a new Next.js app using [`create-next-app`](/docs/app/api-reference/create-next-app), which sets up everything automatically for you. To create a project, run:
+
+```bash filename="Terminal"
+npx create-next-app@latest
+```
+
+On installation, you'll see the following prompts:
+
+```txt filename="Terminal"
+What is your project named? my-app
+Would you like to use TypeScript? No / Yes
+Would you like to use ESLint? No / Yes
+Would you like to use Tailwind CSS? No / Yes
+Would you like to use `src/` directory? No / Yes
+Would you like to use App Router? (recommended) No / Yes
+Would you like to customize the default import alias (@/*)? No / Yes
+What import alias would you like configured? @/*
+```
+
+After the prompts, `create-next-app` will create a folder with your project name and install the required dependencies.
+
+> **Good to know**:
+>
+> - Next.js now ships with [TypeScript](/docs/app/building-your-application/configuring/typescript), [ESLint](/docs/app/building-your-application/configuring/eslint), and [Tailwind CSS](/docs/app/building-your-application/styling/tailwind-css) configuration by default.
+> - You can optionally use a [`src` directory](/docs/app/building-your-application/configuring/src-directory) in the root of your project to separate your application's code from configuration files.
+
+## Manual Installation
+
+To manually create a new Next.js app, install the required packages:
+
+```bash filename="Terminal"
+npm install next@latest react@latest react-dom@latest
+```
+
+Open your `package.json` file and add the following `scripts`:
+
+```json filename="package.json"
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+```
+
+These scripts refer to the different stages of developing an application:
+
+- `dev`: runs [`next dev`](/docs/app/api-reference/next-cli#development) to start Next.js in development mode.
+- `build`: runs [`next build`](/docs/app/api-reference/next-cli#build) to build the application for production usage.
+- `start`: runs [`next start`](/docs/app/api-reference/next-cli#production) to start a Next.js production server.
+- `lint`: runs [`next lint`](/docs/app/api-reference/next-cli#lint) to set up Next.js' built-in ESLint configuration.
+
+### Creating directories
+
+Next.js uses file-system routing, which means the routes in your application are determined by how you structure your files.
+
+#### The `app` directory
+
+For new applications, we recommend using the [App Router](/docs/app). This router allows you to use React's latest features and is an evolution of the [Pages Router](/docs/pages) based on community feedback.
+
+Create an `app/` folder, then add a `layout.tsx` and `page.tsx` file. These will be rendered when the user visits the root of your application (`/`).
+
+<Image
+  alt="App Folder Structure"
+  srcLight="/docs/light/app-getting-started.png"
+  srcDark="/docs/dark/app-getting-started.png"
+  width="1600"
+  height="363"
+/>
+
+Create a [root layout](/docs/app/building-your-application/routing/pages-and-layouts#root-layout-required) inside `app/layout.tsx` with the required `<html>` and `<body>` tags:
+
+```tsx filename="app/layout.tsx" switcher
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```jsx filename="app/layout.js" switcher
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+Finally, create a home page `app/page.tsx` with some initial content:
+
+```tsx filename="app/page.tsx" switcher
+export default function Page() {
+  return <h1>Hello, Next.js!</h1>
+}
+```
+
+```jsx filename="app/page.js" switcher
+export default function Page() {
+  return <h1>Hello, Next.js!</h1>
+}
+```
+
+> **Good to know**: If you forget to create `layout.tsx`, Next.js will automatically create this file when running the development server with `next dev`.
+
+Learn more about [using the App Router](/docs/app/building-your-application/routing/defining-routes).
+
+#### The `pages` directory (optional)
+
+If you prefer to use the Pages Router instead of the App Router, you can create a `pages/` directory at the root of your project.
+
+Then, add an `index.tsx` file inside your `pages` folder. This will be your home page (`/`):
+
+```tsx filename="pages/index.tsx" switcher
+export default function Page() {
+  return <h1>Hello, Next.js!</h1>
+}
+```
+
+Next, add an `_app.tsx` file inside `pages/` to define the global layout. Learn more about the [custom App file](/docs/pages/building-your-application/routing/custom-app).
+
+```tsx filename="pages/_app.tsx" switcher
+import type { AppProps } from 'next/app'
+
+export default function App({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />
+}
+```
+
+```jsx filename="pages/_app.js" switcher
+export default function App({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+```
+
+Finally, add a `_document.tsx` file inside `pages/` to control the initial response from the server. Learn more about the [custom Document file](/docs/pages/building-your-application/routing/custom-document).
+
+```tsx filename="pages/_document.tsx" switcher
+import { Html, Head, Main, NextScript } from 'next/document'
+
+export default function Document() {
+  return (
+    <Html>
+      <Head />
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  )
+}
+```
+
+Learn more about [using the Pages Router](/docs/pages/building-your-application/routing/pages-and-layouts).
+
+> **Good to know**: Although you can use both routers in the same project, routes in `app` will be prioritized over `pages`. We recommend using only one router in your new project to avoid confusion.
+
+#### The `public` folder (optional)
+
+Create a `public` folder to store static assets such as images, fonts, etc. Files inside `public` directory can then be referenced by your code starting from the base URL (`/`).
+
+## Run the Development Server
+
+1. Run `npm run dev` to start the development server.
+2. Visit `http://localhost:3000` to view your application.
+3. Edit `app/layout.tsx` (or `pages/index.tsx`) file and save it to see the updated result in your browser.
+
+
+
+
+
+# 01-getting-started-02-project-structure
+---
+title: Next.js Project Structure
+nav_title: Project Structure
+description: A list of folders and files conventions in a Next.js project
+---
+
+This page provides an overview of the file and folder structure of a Next.js project. It covers top-level files and folders, configuration files, and routing conventions within the `app` and `pages` directories.
+
+## Top-level folders
+
+|                                                                          |                                    |
+| ------------------------------------------------------------------------ | ---------------------------------- |
+| [`app`](/docs/app/building-your-application/routing)                     | App Router                         |
+| [`pages`](/docs/pages/building-your-application/routing)                 | Pages Router                       |
+| [`public`](/docs/app/building-your-application/optimizing/static-assets) | Static assets to be served         |
+| [`src`](/docs/app/building-your-application/configuring/src-directory)   | Optional application source folder |
+
+## Top-level files
+
+|                                                                                             |                                         |
+| ------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **Next.js**                                                                                 |                                         |
+| [`next.config.js`](/docs/app/api-reference/next-config-js)                                  | Configuration file for Next.js          |
+| [`package.json`](/docs/getting-started/installation#manual-installation)                    | Project dependencies and scripts        |
+| [`instrumentation.ts`](/docs/app/building-your-application/optimizing/instrumentation)      | OpenTelemetry and Instrumentation file  |
+| [`middleware.ts`](/docs/app/building-your-application/routing/middleware)                   | Next.js request middleware              |
+| [`.env`](/docs/app/building-your-application/configuring/environment-variables)             | Environment variables                   |
+| [`.env.local`](/docs/app/building-your-application/configuring/environment-variables)       | Local environment variables             |
+| [`.env.production`](/docs/app/building-your-application/configuring/environment-variables)  | Production environment variables        |
+| [`.env.development`](/docs/app/building-your-application/configuring/environment-variables) | Development environment variables       |
+| [`.eslintrc.json`](/docs/app/building-your-application/configuring/eslint)                  | Configuration file for ESLint           |
+| `.gitignore`                                                                                | Git files and folders to ignore         |
+| `next-env.d.ts`                                                                             | TypeScript declaration file for Next.js |
+| `tsconfig.json`                                                                             | Configuration file for TypeScript       |
+| `jsconfig.json`                                                                             | Configuration file for JavaScript       |
+
+## `app` Routing Conventions
+
+### Routing Files
+
+|                                                                                 |                     |                              |
+| ------------------------------------------------------------------------------- | ------------------- | ---------------------------- |
+| [`layout`](/docs/app/api-reference/file-conventions/layout)                     | `.js` `.jsx` `.tsx` | Layout                       |
+| [`page`](/docs/app/api-reference/file-conventions/page)                         | `.js` `.jsx` `.tsx` | Page                         |
+| [`loading`](/docs/app/api-reference/file-conventions/loading)                   | `.js` `.jsx` `.tsx` | Loading UI                   |
+| [`not-found`](/docs/app/api-reference/file-conventions/not-found)               | `.js` `.jsx` `.tsx` | Not found UI                 |
+| [`error`](/docs/app/api-reference/file-conventions/error)                       | `.js` `.jsx` `.tsx` | Error UI                     |
+| [`global-error`](/docs/app/api-reference/file-conventions/error#global-errorjs) | `.js` `.jsx` `.tsx` | Global error UI              |
+| [`route`](/docs/app/api-reference/file-conventions/route)                       | `.js` `.ts`         | API endpoint                 |
+| [`template`](/docs/app/api-reference/file-conventions/template)                 | `.js` `.jsx` `.tsx` | Re-rendered layout           |
+| [`default`](/docs/app/api-reference/file-conventions/default)                   | `.js` `.jsx` `.tsx` | Parallel route fallback page |
+
+### Nested Routes
+
+|                                                                              |                      |
+| ---------------------------------------------------------------------------- | -------------------- |
+| [`folder`](/docs/app/building-your-application/routing#route-segments)       | Route segment        |
+| [`folder/folder`](/docs/app/building-your-application/routing#nested-routes) | Nested route segment |
+
+### Dynamic Routes
+
+|                                                                                                           |                                  |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| [`[folder]`](/docs/app/building-your-application/routing/dynamic-routes#convention)                       | Dynamic route segment            |
+| [`[...folder]`](/docs/app/building-your-application/routing/dynamic-routes#catch-all-segments)            | Catch-all route segment          |
+| [`[[...folder]]`](/docs/app/building-your-application/routing/dynamic-routes#optional-catch-all-segments) | Optional catch-all route segment |
+
+### Route Groups and Private Folders
+
+|                                                                                     |                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [`(folder)`](/docs/app/building-your-application/routing/route-groups#convention)   | Group routes without affecting routing           |
+| [`_folder`](/docs/app/building-your-application/routing/colocation#private-folders) | Opt folder and all child segments out of routing |
+
+### Parallel and Intercepted Routes
+
+|                                                                                                |                            |
+| ---------------------------------------------------------------------------------------------- | -------------------------- |
+| [`@folder`](/docs/app/building-your-application/routing/parallel-routes#convention)            | Named slot                 |
+| [`(.)folder`](/docs/app/building-your-application/routing/intercepting-routes#convention)      | Intercept same level       |
+| [`(..)folder`](/docs/app/building-your-application/routing/intercepting-routes#convention)     | Intercept one level above  |
+| [`(..)(..)folder`](/docs/app/building-your-application/routing/intercepting-routes#convention) | Intercept two levels above |
+| [`(...)folder`](/docs/app/building-your-application/routing/intercepting-routes#convention)    | Intercept from root        |
+
+### Metadata File Conventions
+
+#### App Icons
+
+|                                                                                                                 |                                     |                          |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------ |
+| [`favicon`](/docs/app/api-reference/file-conventions/metadata/app-icons#favicon)                                | `.ico`                              | Favicon file             |
+| [`icon`](/docs/app/api-reference/file-conventions/metadata/app-icons#icon)                                      | `.ico` `.jpg` `.jpeg` `.png` `.svg` | App Icon file            |
+| [`icon`](/docs/app/api-reference/file-conventions/metadata/app-icons#generate-icons-using-code-js-ts-tsx)       | `.js` `.ts` `.tsx`                  | Generated App Icon       |
+| [`apple-icon`](/docs/app/api-reference/file-conventions/metadata/app-icons#apple-icon)                          | `.jpg` `.jpeg`, `.png`              | Apple App Icon file      |
+| [`apple-icon`](/docs/app/api-reference/file-conventions/metadata/app-icons#generate-icons-using-code-js-ts-tsx) | `.js` `.ts` `.tsx`                  | Generated Apple App Icon |
+
+#### Open Graph and Twitter Images
+
+|                                                                                                                             |                              |                            |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------- |
+| [`opengraph-image`](/docs/app/api-reference/file-conventions/metadata/opengraph-image#opengraph-image)                      | `.jpg` `.jpeg` `.png` `.gif` | Open Graph image file      |
+| [`opengraph-image`](/docs/app/api-reference/file-conventions/metadata/opengraph-image#generate-images-using-code-js-ts-tsx) | `.js` `.ts` `.tsx`           | Generated Open Graph image |
+| [`twitter-image`](/docs/app/api-reference/file-conventions/metadata/opengraph-image#twitter-image)                          | `.jpg` `.jpeg` `.png` `.gif` | Twitter image file         |
+| [`twitter-image`](/docs/app/api-reference/file-conventions/metadata/opengraph-image#generate-images-using-code-js-ts-tsx)   | `.js` `.ts` `.tsx`           | Generated Twitter image    |
+
+#### SEO
+
+|                                                                                             |             |                       |
+| ------------------------------------------------------------------------------------------- | ----------- | --------------------- |
+| [`sitemap`](/docs/app/api-reference/file-conventions/metadata/sitemap#static-sitemapxml)    | `.xml`      | Sitemap file          |
+| [`sitemap`](/docs/app/api-reference/file-conventions/metadata/sitemap#generate-a-sitemap)   | `.js` `.ts` | Generated Sitemap     |
+| [`robots`](/docs/app/api-reference/file-conventions/metadata/robots#static-robotstxt)       | `.txt`      | Robots file           |
+| [`robots`](/docs/app/api-reference/file-conventions/metadata/robots#generate-a-robots-file) | `.js` `.ts` | Generated Robots file |
+
+## `pages` Routing Conventions
+
+### Special Files
+
+|                                                                                                             |                     |                   |
+| ----------------------------------------------------------------------------------------------------------- | ------------------- | ----------------- |
+| [`_app`](/docs/pages/building-your-application/routing/custom-app)                                          | `.js` `.jsx` `.tsx` | Custom App        |
+| [`_document`](/docs/pages/building-your-application/routing/custom-document)                                | `.js` `.jsx` `.tsx` | Custom Document   |
+| [`_error`](/docs/pages/building-your-application/routing/custom-error#more-advanced-error-page-customizing) | `.js` `.jsx` `.tsx` | Custom Error Page |
+| [`404`](/docs/pages/building-your-application/routing/custom-error#404-page)                                | `.js` `.jsx` `.tsx` | 404 Error Page    |
+| [`500`](/docs/pages/building-your-application/routing/custom-error#500-page)                                | `.js` `.jsx` `.tsx` | 500 Error Page    |
+
+### Routes
+
+|                                                                                                |                     |             |
+| ---------------------------------------------------------------------------------------------- | ------------------- | ----------- |
+| **Folder convention**                                                                          |                     |             |
+| [`index`](/docs/pages/building-your-application/routing/pages-and-layouts#index-routes)        | `.js` `.jsx` `.tsx` | Home page   |
+| [`folder/index`](/docs/pages/building-your-application/routing/pages-and-layouts#index-routes) | `.js` `.jsx` `.tsx` | Nested page |
+| **File convention**                                                                            |                     |             |
+| [`index`](/docs/pages/building-your-application/routing/pages-and-layouts#index-routes)        | `.js` `.jsx` `.tsx` | Home page   |
+| [`file`](/docs/pages/building-your-application/routing/pages-and-layouts)                      | `.js` `.jsx` `.tsx` | Nested page |
+
+### Dynamic Routes
+
+|                                                                                                                   |                     |                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------- |
+| **Folder convention**                                                                                             |                     |                                  |
+| [`[folder]/index`](/docs/pages/building-your-application/routing/dynamic-routes)                                  | `.js` `.jsx` `.tsx` | Dynamic route segment            |
+| [`[...folder]/index`](/docs/pages/building-your-application/routing/dynamic-routes#catch-all-segments)            | `.js` `.jsx` `.tsx` | Catch-all route segment          |
+| [`[[...folder]]/index`](/docs/pages/building-your-application/routing/dynamic-routes#optional-catch-all-segments) | `.js` `.jsx` `.tsx` | Optional catch-all route segment |
+| **File convention**                                                                                               |                     |                                  |
+| [`[file]`](/docs/pages/building-your-application/routing/dynamic-routes)                                          | `.js` `.jsx` `.tsx` | Dynamic route segment            |
+| [`[...file]`](/docs/pages/building-your-application/routing/dynamic-routes#catch-all-segments)                    | `.js` `.jsx` `.tsx` | Catch-all route segment          |
+| [`[[...file]]`](/docs/pages/building-your-application/routing/dynamic-routes#optional-catch-all-segments)         | `.js` `.jsx` `.tsx` | Optional catch-all route segment |
+
+
+
+
+
+# 01-getting-started-index
+---
+title: Getting Started
+description: Learn how to create full-stack web applications with Next.js.
+---
+
+
+
+
+
+# 01-server-components
+---
+title: Server Components
+description: Learn how you can use React Server Components to render parts of your application on the server.
+related:
+  description: Learn how Next.js caches data and the result of static rendering.
+  links:
+    - app/building-your-application/caching
+---
+
+React Server Components allow you to write UI that can be rendered and optionally cached on the server. In Next.js, the rendering work is further split by route segments to enable streaming and partial rendering, and there are three different server rendering strategies:
+
+- [Static Rendering](#static-rendering-default)
+- [Dynamic Rendering](#dynamic-rendering)
+- [Streaming](#streaming)
+
+This page will go through how Server Components work, when you might use them, and the different server rendering strategies.
+
+## Benefits of Server Rendering
+
+There are a couple of benefits to doing the rendering work on the server, including:
+
+- **Data Fetching**: Server Components allow you to move data fetching to the server, closer to your data source. This can improve performance by reducing time it takes to fetch data needed for rendering, and the amount of requests the client needs to make.
+- **Security**: Server Components allow you to keep sensitive data and logic on the server, such as tokens and API keys, without the risk of exposing them to the client.
+- **Caching**: By rendering on the server, the result can be cached and reused on subsequent requests and across users. This can improve performance and reduce cost by reducing the amount of rendering and data fetching done on each request.
+- **Bundle Sizes**: Server Components allow you to keep large dependencies that previously would impact the client JavaScript bundle size on the server. This is beneficial for users with slower internet or less powerful devices, as the client does not have to download, parse and execute any JavaScript for Server Components.
+- **Initial Page Load and [First Contentful Paint (FCP)](https://web.dev/fcp/)**: On the server, we can generate HTML to allow users to view the page immediately, without waiting for the client to download, parse and execute the JavaScript needed to render the page.
+- **Search Engine Optimization and Social Network Shareability**: The rendered HTML can be used by search engine bots to index your pages and social network bots to generate social card previews for your pages.
+- **Streaming**: Server Components allow you to split the rendering work into chunks and stream them to the client as they become ready. This allows the user to see parts of the page earlier without having to wait for the entire page to be rendered on the server.
+
+## Using Server Components in Next.js
+
+By default, Next.js uses Server Components. This allows you to automatically implement server rendering with no additional configuration, and you can opt into using Client Components when needed, see [Client Components](/docs/app/building-your-application/rendering/client-components).
+
+## How are Server Components rendered?
+
+On the server, Next.js uses React's APIs to orchestrate rendering. The rendering work is split into chunks: by individual route segments and [Suspense Boundaries](https://react.dev/reference/react/Suspense).
+
+Each chunk is rendered in two steps:
+
+1. React renders Server Components into a special data format called the **React Server Component Payload (RSC Payload)**.
+2. Next.js uses the RSC Payload and Client Component JavaScript instructions to render **HTML** on the server.
+
+{/* Rendering Diagram */}
+
+Then, on the client:
+
+1. The HTML is used to immediately show a fast non-interactive preview of the route - this is for the initial page load only.
+2. The React Server Components Payload is used to reconcile the Client and Server Component trees, and update the DOM.
+3. The JavaScript instructions are used to [hydrate](https://react.dev/reference/react-dom/client/hydrateRoot) Client Components and make the application interactive.
+
+> **What is the React Server Component Payload (RSC)?**
+>
+> The RSC Payload is a compact binary representation of the rendered React Server Components tree. It's used by React on the client to update the browser's DOM. The RSC Payload contains:
+>
+> - The rendered result of Server Components
+> - Placeholders for where Client Components should be rendered and references to their JavaScript files
+> - Any props passed from a Server Component to a Client Component
+
+## Server Rendering Strategies
+
+There are three subsets of server rendering: Static, Dynamic, and Streaming.
+
+### Static Rendering (Default)
+
+{/* Static Rendering Diagram */}
+
+With Static Rendering, routes are rendered at **build time**, or in the background after [data revalidation](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating#revalidating-data). The result is cached and can be pushed to a [Content Delivery Network (CDN)](https://developer.mozilla.org/docs/Glossary/CDN). This optimization allows you to share the result of the rendering work between users and server requests.
+
+Static rendering is useful when a route has data that is not personalized to the user and can be known at build time, such as a static blog post or a product page.
+
+### Dynamic Rendering
+
+{/* Dynamic Rendering Diagram */}
+
+With Dynamic Rendering, routes are rendered for each user at **request time**.
+
+Dynamic rendering is useful when a route has data that is personalized to the user or has information that can only be known at request time, such as cookies or the URL's search params.
+
+> **Dynamic Routes with Cached Data**
+>
+> In most websites, routes are not fully static or fully dynamic - it's a spectrum. For example, you can have e-commerce page that uses cached product data that's revalidated at an interval, but also has uncached, personalized customer data.
+>
+> In Next.js, you can have dynamically rendered routes that have both cached and uncached data. This is because the RSC Payload and data are cached separately. This allows you to opt into dynamic rendering without worrying about the performance impact of fetching all the data at request time.
+>
+> Learn more about the [full-route cache](/docs/app/building-your-application/caching#full-route-cache) and [Data Cache](/docs/app/building-your-application/caching#data-cache).
+
+#### Switching to Dynamic Rendering
+
+During rendering, if a [dynamic function](#dynamic-functions) or [uncached data request](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating#opting-out-of-data-caching) is discovered, Next.js will switch to dynamically rendering the whole route. This table summarizes how dynamic functions and data caching affect whether a route is statically or dynamically rendered:
+
+| Dynamic Functions | Data       | Route                |
+| ----------------- | ---------- | -------------------- |
+| No                | Cached     | Statically Rendered  |
+| Yes               | Cached     | Dynamically Rendered |
+| No                | Not Cached | Dynamically Rendered |
+| Yes               | Not Cached | Dynamically Rendered |
+
+In the table above, for a route to be fully static, all data must be cached. However, you can have a dynamically rendered route that uses both cached and uncached data fetches.
+
+As a developer, you do not need to choose between static and dynamic rendering as Next.js will automatically choose the best rendering strategy for each route based on the features and APIs used. Instead, you choose when to [cache or revalidate specific data](/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating), and you may choose to [stream](#streaming) parts of your UI.
+
+#### Dynamic Functions
+
+Dynamic functions rely on information that can only be known at request time such as a user's cookies, current requests headers, or the URL's search params. In Next.js, these dynamic functions are:
+
+- **[`cookies()`](/docs/app/api-reference/functions/cookies) and [`headers()`](/docs/app/api-reference/functions/headers)**: Using these in a Server Component will opt the whole route into dynamic rendering at request time.
+- **[`useSearchParams()`](/docs/app/api-reference/functions/use-search-params)**:
+  - In Client Components, it'll skip static rendering and instead render all Client Components up to the nearest parent Suspense boundary on the client.
+  - We recommend wrapping the Client Component that uses `useSearchParams()` in a `<Suspense/>` boundary. This will allow any Client Components above it to be statically rendered. [Example](/docs/app/api-reference/functions/use-search-params#static-rendering).
+- **[`searchParams`](/docs/app/api-reference/file-conventions/page#searchparams-optional)**: Using the [Pages](/docs/app/api-reference/file-conventions/page) prop will opt the page into dynamic rendering at request time.
+
+Using any of these functions will opt the whole route into dynamic rendering at request time.
+
+### Streaming
+
+<Image
+  alt="Diagram showing parallelization of route segments during streaming, showing data fetching, rendering, and hydration of invidiual chunks."
+  srcLight="/docs/light/sequential-parallel-data-fetching.png"
+  srcDark="/docs/dark/sequential-parallel-data-fetching.png"
+  width="1600"
+  height="525"
+/>
+
+Streaming enables you to progressively render UI from the server. Work is split into chunks and streamed to the client as it becomes ready. This allows the user to see parts of the page immediately, before the entire content has finished rendering.
+
+<Image
+  alt="Diagram showing partially rendered page on the client, with loading UI for chunks that are being streamed."
+  srcLight="/docs/light/server-rendering-with-streaming.png"
+  srcDark="/docs/dark/server-rendering-with-streaming.png"
+  width="1600"
+  height="785"
+/>
+
+Streaming is built into the Next.js App Router by default. This helps improve both the initial page loading performance, as well as UI that depends on slower data fetches that would block rendering the whole route. For example, reviews on a product page.
+
+You can start streaming route segments using `loading.js` and UI components with [React Suspense](/docs/app/building-your-application/routing/loading-ui-and-streaming). See the [Loading UI and Streaming](/docs/app/building-your-application/routing/loading-ui-and-streaming) section for more information.
+
+
+
